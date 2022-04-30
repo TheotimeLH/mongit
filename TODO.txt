@@ -1,0 +1,17 @@
+init
+add
+commit
+push
+pop
+
+Je veux des merges propre,
+On sauvegarde juste les différences, du genre
+à partir de ligne 45 jusqu'à 55
+avant :
+après :
+
+faire un gestionnaire d'historique
+avec une commande pour print les différences
+
+Si diff de plus de la moitié, on sauvegarde entièrement la nouvelle version
+
