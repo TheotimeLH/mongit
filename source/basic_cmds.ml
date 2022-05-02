@@ -22,7 +22,6 @@ let remove () =
 
   printf "Do you really want to delete the repo ? [yes or no]\n" ;
   if read_line () = "yes" then Outils.remove "./.mongit"
-    
 (* ================ *)
   
 
