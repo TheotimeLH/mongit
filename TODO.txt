@@ -3,6 +3,8 @@ add
 commit
 push
 pop
+status
+restore
 
 Je veux des merges propre,
 On sauvegarde juste les différences, du genre

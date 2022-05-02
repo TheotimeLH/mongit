@@ -16,7 +16,7 @@ let rec remove path =
 (* ===== FIND THE REPO ===== *)
 let repo_find_path path =
   let rec aux p =
-    let mg = Filename.concat path "/.mongit" in
+    let mg = Filename.concat p ".mongit" in
     if Sys.file_exists mg then mg
     else 
       let parent = Filename.dirname p in
