@@ -1,4 +1,4 @@
 (executable                                                            
  (name main)
- (libraries unix) )
+ (libraries unix sha zip) )
 

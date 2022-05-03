@@ -10,5 +10,9 @@ let aff_qlqch str =
 (* TEST repo_find 
   let s = Outils.repo_find () in
   Printf.printf "%s" s ; *)
+(* TEST Hash
+  let key,rest = Outils.hash_file 
+    "/home/theotime/Documents/Projets/mongit/source/tmp.ml" in 
+  Printf.printf "key : %s , rest : %s\n" key rest ; *)
   print_debug "Fin de la cmd avec : %s\n" str ;
   
