@@ -1,13 +1,7 @@
 open Root
 
 let aff_qlqch str =
-(* retest *)
 (* test *)
-(* TEST DEBUG *)
-(*print_debug "Affiche du debug \n" ; *)
-(* TEST DEBUG *)
-(*print_debug "Affiche du debug \n" ; *)
-(* blalba*)
 (* TEST DEBUG *)
 (*print_debug "Affiche du debug \n" ; *)
 (* TEST DEBUG *)
