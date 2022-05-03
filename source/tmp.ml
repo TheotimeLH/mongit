@@ -1,6 +1,9 @@
 open Root
 
 let aff_qlqch str =
+(* test *)
+(* TEST DEBUG *)
+(*print_debug "Affiche du debug \n" ; *)
 (* TEST DEBUG *)
 (*print_debug "Affiche du debug \n" ; *)
 (* TEST FILEPERM *)
