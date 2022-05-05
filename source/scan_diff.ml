@@ -1,4 +1,3 @@
-
 let numerote_old old_ch =
   let nb_num = ref 0 in
   let tbl_num = Hashtbl.create 20 in
@@ -46,6 +45,83 @@ let eval_sol t_placeN =
     then (max_acc := t_placeN.(i) ; incr sum)
   done ;
   !sum
+
+exception Fin
+
+type change = 
+  | Modif of (int * int) * (int * int)
+  | Add of (int * int)
+  | Remove of (int * int)
+
+let mk_sol_finale t_placeN lenO =
+  let lenN = Array.length t_placeN in
+  (* On commence par clean la sol, conjecture : la sol est déjà clean *)
+  (* Les morceaux de taille 1 *)
+  if (lenN > 1) then 
+  ( if (t_placeN.(0) + 1 <> t_placeN.(1)) 
+      then t_placeN.(0) <- -1 ;
+    if (t_placeN.(lenN - 2) + 1 <> t_placeN.(lenN - 1)) 
+      then t_placeN.(lenN - 1) <- -1 
+  ) ;
+  for i = 1 to lenN - 2 do
+    if (t_placeN.(i-1)+1<>t_placeN.(i)) && (t_placeN.(i+1)-1<>t_placeN.(i))
+    then t_placeN.(i) <- -1
+  done ;
+  (* Puis les décroissances *)
+  let max_acc = ref (-1) in
+  for i = 0 to lenN - 1 do
+    if t_placeN.(i) <= !max_acc
+    then t_placeN.(i) <- -1
+    else max_acc := t_placeN.(i)
+  done ;
+  (* Fin clean *)
+  (* Compte les points conservés *)
+  let sum = ref 0 in
+  Array.iter (fun x -> if x<>-1 then incr sum) t_placeN ;
+  (* *)
+
+  let sol = ref [] in (* change list *)
+  let rec next i =
+    if i >= lenN then raise Fin ;
+    if t_placeN.(i) <> -1 then i
+    else next (i+1)
+  in
+  let max_acc = ref (-1) in
+  let i_new = ref 0 
+  and i_old = ref 0 in
+  begin
+  try while !i_new < lenN do
+    let i_new_next = next !i_new in
+    let i_old_next = t_placeN.(i_new_next) in
+    let b_new = !i_new <> i_new_next
+    and b_old = !i_old <> i_old_next in
+    if b_new || b_old then 
+      sol := 
+      ( match b_new , b_old with
+        | true , false -> Add (!i_new , i_new_next -1)
+        | false , true -> Remove (!i_old , i_old_next -1)
+        | true , true -> Modif ((!i_old , i_old_next -1),(!i_new , i_new_next -1))
+        | false , false -> failwith "z" )
+      :: !sol ;
+    i_new := i_new_next + 1 ;
+    i_old := i_old_next + 1
+  done 
+  with | Fin ->
+    let b_new = !i_new < lenN 
+    and b_old = !i_old < lenO in
+    if b_new || b_old then 
+      sol := 
+      ( match b_new , b_old with
+        | true , false -> Add (!i_new , lenN-1)
+        | false , true -> Remove (!i_old , lenO-1)
+        | true , true -> Modif ((!i_old , lenO-1),(!i_new , lenN-1))
+        | false , false -> failwith "z" )
+      :: !sol
+  end
+  !sum,!sol
+    
+
+
 
 
 (* Personne ne retourne en arrière, on prend le premier slot
@@ -140,18 +216,14 @@ let main old_ch new_ch =
 
   compress !t_placeN !t_placeO ;
 
+  mk_sol_finale !t_placeN lenO
+(* Pour tester :
   print_endline (String.concat " " 
     (Array.to_list (Array.map string_of_int !t_placeN)))
-
 
 let () =
   let oldch = open_in "old.ml"
   and newch = open_in "new.ml" in
   main oldch newch ;
-  close_in oldch ; close_in newch
- 
-
-
-
-
+  close_in oldch ; close_in newch *)
 
