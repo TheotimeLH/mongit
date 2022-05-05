@@ -38,6 +38,9 @@ let fn_concat_list l =
   
 
 (* ===== HASH ===== *)
+let sha_name nm =
+  Sha1.(to_hex (string nm))
+
 let mksha f =
   let ic = open_in f in
   let str_h = Sha1.(to_hex (channel ic (-1))) in
@@ -87,14 +90,23 @@ let store = function
 (* ================== *)
 
 
-
+(* ===== CHECK ===== *)
+let repo_find_chk () =
+  try repo_find ()
+  with | No_repo ->
+    eprintf "Error : no repo found (cwd : \"%s\")\n" (Unix.getcwd ()) ;
+    exit 1
     
+let exists_chk f =
+  if not (Sys.file_exists f) then
+  ( eprintf "Error : the path \"%s\" did not match any file\n" f ;
+    exit 1 )
+(* ================== *)
 
 
-
-
-
-
-
+(* AUX *)
+let empty_file f =
+  let oc = open_out_gen [Open_creat] mkfile_num f in
+  close_out oc
 
 

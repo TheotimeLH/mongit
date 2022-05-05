@@ -9,9 +9,15 @@ let init () =
     exit 1) ;
 
   List.iter (fun name -> Unix.mkdir name Root.mkdir_num)
-    ["./.mongit" ;
-     "./.mongit/files" ;
-     "./.mongit/commits"]
+    [".mongit" ;
+     ".mongit/files" ;
+     ".mongit/commits" ;
+     ".mongit/trees" ] ;
+
+  Outils.empty_file 
+    (Unix.realpath "." 
+    |> Outils.sha_name 
+    |> (Filename.concat ".mongit/trees"))
 (* ================ *)
 
 
@@ -44,18 +50,10 @@ let hash_file f =
 
 (* ===== CAT-FILE ===== *) 
 let cat_file str_h =
-  try
-    let repo = Outils.repo_find () in
-    let key,rest = Outils.cut_sha str_h in
-    let file = Outils.fn_concat_list [repo;"files";key;rest] in
-    if not (Sys.file_exists file) then raise Not_exists ;
-    let ic = open_in_bin file in
-    Outils.uncompress_opened ic stdout
-  with
-  | No_repo ->
-      eprintf "Error : no repo found (cwd : \"%s\")\n" (Unix.getcwd ()) ;
-      exit 1
-  | Not_exists ->
-      eprintf "Error : the sha key \"%s\" isn't used\n" str_h ;
-      exit 1
+  let repo = Outils.repo_find_chk () in
+  let key,rest = Outils.cut_sha str_h in
+  let file = Outils.fn_concat_list [repo;"files";key;rest] in
+  Outils.exists_chk file ;
+  let ic = open_in_bin file in
+  Outils.uncompress_opened ic stdout
 (* ================ *)

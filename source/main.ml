@@ -1,5 +1,7 @@
 open Arg
 
+let subparser = ref "default" in
+
 let speclist = ref
   [("-debug", 
       Set Root.bool_print_debug , 
@@ -26,5 +28,16 @@ let speclist = ref
        For instance you can -add a whole directory and then -minus just one file the dir contains.");
    ]
 
-
+and subparser_commit () =
+  subparser := "commit" ;
+  speclist := [
+   ("-m",
+      Set_string Commit.msg ,
+      "add a message to the commit");
+  ]
+    
 let () = Arg.parse_dynamic speclist Tmp.aff_qlqch ""
+
+let () = match !subparser with
+  | "commit" -> Commit.cmd_commit ()
+  | _ -> ()
