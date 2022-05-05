@@ -17,7 +17,8 @@ let init () =
   Outils.empty_file 
     (Unix.realpath "." 
     |> Outils.sha_name 
-    |> (Filename.concat ".mongit/trees"))
+    |> (Filename.concat ".mongit/trees")) ;
+  Outils.empty_file ".mongit/trees/files" ;
 (* ================ *)
 
 

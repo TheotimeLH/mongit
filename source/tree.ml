@@ -15,5 +15,6 @@ and add_dir dr_tree dir =
   if not (Sys.file_exists hparent) then add_dir parent ;
   let oc_par = open_out_gen [Open_append] 0 hparent in
   output_string oc_par (sprintf "dir %s\n" (Outils.sha_name dir)) ;
-  close_out oc_par
+  close_out oc_par ;
+  Outils.empty_file (Filename.concat dr_tree (Outils.sha_name dir))
 
