@@ -35,6 +35,19 @@ let indice_new new_ch nb_num tbl_num =
   ( Array.map List.rev t_ind ,
     Array.of_list (List.rev !lines) )
 
+
+let eval_sol t_placeN =
+  let lenN = Array.length t_placeN in
+  let max_acc = ref (-1) in
+  let sum = ref 0 in
+  for i = 1 to lenN - 1 do
+    if (t_placeN.(i) > !max_acc)
+    && (t_placeN.(i) - 1 = t_placeN.(i-1))
+    then (max_acc := t_placeN.(i) ; incr sum)
+  done ;
+  !sum
+
+
 (* Personne ne retourne en arrière, on prend le premier slot
    et on ne pourra que avancer. *)
 let main old_ch new_ch =
@@ -49,12 +62,12 @@ let main old_ch new_ch =
 
   (* Etape 1 : tous les lancer *)
   let t_indN' = Array.copy t_indN in
-  let tbl_dispo = Array.make nb_num [] in
+  (* let tbl_dispo = Array.make nb_num [] in *)
   for i_old = 0 to lenO -1 do
     let num = t_numO.(i_old) in
     match t_indN'.(num) with
-    | [] -> 
-        tbl_dispo.(num) <- i_old :: tbl_dispo.(num)
+    | [] -> () 
+        (* tbl_dispo.(num) <- i_old :: tbl_dispo.(num) *)
     | next :: q -> 
         t_placeN.(next) <- i_old ;
         t_placeO.(i_old) <- next ;
@@ -62,39 +75,74 @@ let main old_ch new_ch =
   done ;
 
   (* Etape 2 : compresser, quitte à pousser *)
-  let relance i_new i_old =
+  let relance i_new i_old t_placeN t_placeO =
     t_placeO.(i_old) <- -1 ;
     let num = t_numO.(i_old) in
-    let b =
-      List.exists 
-       (fun i -> 
-          if (i < i_new) || (t_placeN.(i) <> -1)
-          then false
-          else 
-            ( t_placeN.(i) <- i_old ; 
-              t_placeO.(i_old) <- i ;
-              true )
-       ) t_indN.(num)
-    in
-    if not b then tbl_dispo.(num) <- i_old :: tbl_dispo.(num)
+    let i_old = ref i_old in
+    List.exists 
+     (fun i -> 
+        if i < i_new then false
+        else if t_placeN.(i) <> -1 then (* On le chasse *)
+          ( let i_old' = t_placeN.(i) in
+            t_placeO.(i_old') <- -1 ;
+            t_placeN.(i) <- !i_old ;
+            t_placeO.(!i_old) <- i ;
+            i_old := i_old' ;
+            false )
+        else 
+          ( t_placeN.(i) <- !i_old ; 
+            t_placeO.(!i_old) <- i ;
+            true )
+     ) t_indN.(num)
+    |> ignore
+    (* if not b then tbl_dispo.(num) <- !i_old :: tbl_dispo.(num) *)
   in
 
-  for i_new = lenN-1 downto 1 do
-    let i_old = t_placeN.(i_new) in
-    let i_prec = t_placeN.(i_new - 1) in
-    if (i_old > 0) && (i_prec <> i_old - 1)
-    && (t_numN.(i_new -1) = t_numO.(i_old -1)) 
-    then begin
-      if i_prec <> -1 then relance i_new i_prec ;
-      t_placeN.(t_placeO.(i_old - 1)) <- -1 ;
-      t_placeO.(i_old -1) <- i_new -1 ;
-      t_placeN.(i_new -1) <- i_old -1 ;
+  let compress t_placeN t_placeO =
+    for i_new = lenN-1 downto 1 do
+      let i_old = t_placeN.(i_new) in
+      let i_prec = t_placeN.(i_new - 1) in
+      if (i_old > 0) && (i_prec <> i_old - 1)
+      && (t_numN.(i_new -1) = t_numO.(i_old -1)) 
+      then begin
+        if i_prec <> -1 then relance i_new i_prec t_placeN t_placeO ;
+        t_placeN.(t_placeO.(i_old - 1)) <- -1 ;
+        t_placeO.(i_old -1) <- i_new -1 ;
+        t_placeN.(i_new -1) <- i_old -1 ;
+      end
+    done
+  in
+  compress t_placeN t_placeO ;
+
+  let debut = ref 0 in
+  let serie = ref false in
+  let sol_act = ref (eval_sol t_placeN) in
+  let t_placeN = ref t_placeN
+  and t_placeO = ref t_placeO in
+  for i_new = 1 to lenN -1 do
+    if !t_placeN.(i_new) -1 = !t_placeN.(i_new -1) 
+    then (if not !serie then (serie := true ; debut := i_new - 1))
+    else if !serie then begin
+      let t_placeN_save = Array.copy !t_placeN 
+      and t_placeO_save = Array.copy !t_placeO in
+      for i = !debut to i_new -1 do
+        let i_old = !t_placeN.(i) in
+        !t_placeN.(i) <- -1 ;
+        relance i_new i_old !t_placeN !t_placeO
+      done ;
+      let sol_else = eval_sol !t_placeN in
+      if !sol_act > sol_else 
+      then (t_placeN := t_placeN_save ; t_placeO := t_placeO_save)
+      else sol_act := sol_else ;
+      serie := false
     end
   done ;
 
-  (* Pour teste *)
+  compress !t_placeN !t_placeO ;
+
   print_endline (String.concat " " 
-    (Array.to_list (Array.map string_of_int t_placeN)))
+    (Array.to_list (Array.map string_of_int !t_placeN)))
+
 
 let () =
   let oldch = open_in "old.ml"
