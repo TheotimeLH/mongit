@@ -1,4 +1,6 @@
-let () = Arg.parse                                                       
+open Arg
+
+let speclist = ref
   [("-debug", 
       Set Root.bool_print_debug , 
       "Print debug messages");
@@ -10,9 +12,19 @@ let () = Arg.parse
       "Remove the cwd repo.");
    ("-hash_file",
       String Basic_cmds.hash_file ,
-      "\"git -hash_file \"filename\"\" will store \"filename\" at .mongit/files/");
+      "< mg -hash_file \"filename\" > will store \"filename\" at .mongit/files/");
    ("-cat_file",
       String Basic_cmds.cat_file ,
-      "\"git -cat_file \"sha_key\"\" will print out the file .mongit/files/sha_key");
+      "< mg -cat_file \"sha_key\" > will print out the file .mongit/files/sha_key");
+   ("-add",
+      String (Commit.cmd_add true),
+      "< mg -add \"filename\" > set the file/directory as to be saved on the next commit");
+   ("-minus",
+      String (Commit.cmd_add false),
+      "< mg -minus \"filename\" > remove the file/dir from the list of files to be commited. \n\
+       Can be used to undo a -add, or to be more precise. \n\
+       For instance you can -add a whole directory and then -minus just one file the dir contains.");
    ]
-  Tmp.aff_qlqch ""
+
+
+let () = Arg.parse_dynamic speclist Tmp.aff_qlqch ""
