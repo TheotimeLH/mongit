@@ -110,3 +110,6 @@ let empty_file f =
   close_out oc
 
 
+let rec list_rm_fst_occ x = function
+  | [] -> []
+  | h::q -> if x=h then q else h::list_rm_fst_occ x q
