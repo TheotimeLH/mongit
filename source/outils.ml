@@ -78,15 +78,20 @@ let uncompress infile outfile =
 
 
 (* ===== STORE / LOAD ===== *)
-let store = function
-  | File f ->
-    let repo = repo_find_with_path f in
-    let key,rest = mksha f |> cut_sha in
-    let dir = Filename.concat repo ("files/"^key) in
-    if not (Sys.file_exists dir)
-    then Sys.mkdir dir Root.mkdir_num ;
-    let out = Filename.concat dir rest in
-    compress f out
+let store f dir =
+  let key,rest = mksha f |> cut_sha in
+  let subdir = Filename.concat dir key in
+  if not (Sys.file_exists subdir)
+    then Sys.mkdir subdir Root.mkdir_num ;
+  let out = Filename.concat subdir rest in
+  compress f out
+
+let load str_h dir oc =
+  let key,rest = Outils.cut_sha str_h in
+  let file = Outils.fn_concat_list [dir;key;rest] in
+  Outils.exists_chk file ;
+  let ic = open_in_bin file in
+  Outils.uncompress_opened ic oc
 (* ================== *)
 
 
@@ -113,3 +118,21 @@ let empty_file f =
 let rec list_rm_fst_occ x = function
   | [] -> []
   | h::q -> if x=h then q else h::list_rm_fst_occ x q
+
+let readlines f =
+  let ic = open_in f in
+  let l = ref [] in
+  try while true do
+    l := (input_line ic ^ "\n") :: !l
+  done with | End_of_file -> () ;
+  close_in f ;
+  Array.of_list (List.rev !l)
+
+let remove_hash str_h dir =
+  let key,rest = Outils.cut_sha str_h in
+  let subdir = Filename.concat dir key in
+  let file = Filename.concat subdir rest in
+  Sys.remove file ;
+  try Sys.rmdir subdir 
+  with | _ (* not empty *) -> ()
+

@@ -9,9 +9,7 @@ let print_debug str =
 exception No_repo
 exception Not_exists
 
+module IdMap = Map.Make(String)
 
 let mkdir_num = 0o775
 let mkfile_num = 0o664
-
-type obj = 
-  | File of string

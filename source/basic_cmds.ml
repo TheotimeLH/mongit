@@ -38,7 +38,9 @@ let remove () =
 
 (* ===== HASH-FILE ===== *)
 let hash_file f =
-  try Outils.store (File f)
+  try
+    let repo = Outils.repo_find_chk () in
+    Outils.store f (Filename.concat repo "files")
   with
   | No_repo ->
       eprintf "Error : \"%s\" isn't related to any repo\n" f ;
@@ -51,10 +53,6 @@ let hash_file f =
 
 (* ===== CAT-FILE ===== *) 
 let cat_file str_h =
-  let repo = Outils.repo_find_chk () in
-  let key,rest = Outils.cut_sha str_h in
-  let file = Outils.fn_concat_list [repo;"files";key;rest] in
-  Outils.exists_chk file ;
-  let ic = open_in_bin file in
-  Outils.uncompress_opened ic stdout
+  let dir = Filename.concat (Outils.repo_find_chk ()) "files" in
+  Outils.load str_h dir stdout
 (* ================ *)
