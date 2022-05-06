@@ -77,7 +77,7 @@ let mk_sol_finale t_placeN lenO =
   (* Fin clean *)
   (* Compte les points conservés *)
   let sum = ref 0 in
-  Array.iter (fun x -> if x<>-1 then incr sum) t_placeN ;
+  Array.iter (fun x -> if x<> -1 then incr sum) t_placeN ;
   (* *)
 
   let sol = ref [] in (* change list *)
@@ -86,7 +86,6 @@ let mk_sol_finale t_placeN lenO =
     if t_placeN.(i) <> -1 then i
     else next (i+1)
   in
-  let max_acc = ref (-1) in
   let i_new = ref 0 
   and i_old = ref 0 in
   begin
@@ -117,8 +116,8 @@ let mk_sol_finale t_placeN lenO =
         | true , true -> Modif ((!i_old , lenO-1),(!i_new , lenN-1))
         | false , false -> failwith "z" )
       :: !sol
-  end
-  !sum,!sol
+  end ;
+  !sum,!sol,t_placeN
     
 
 

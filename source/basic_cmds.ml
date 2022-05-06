@@ -4,7 +4,7 @@ open Printf
 (* ===== INIT ===== *)
 let init () =
   print_debug "Execute init : \n" ;
-  if Sys.file_exists "./.mongit" then 
+  if Sys.file_exists ".mongit" then 
    (eprintf "Error : there is already a repo right here.\n" ;
     exit 1) ;
 
@@ -18,7 +18,7 @@ let init () =
     (Unix.realpath "." 
     |> Outils.sha_name 
     |> (Filename.concat ".mongit/trees")) ;
-  Outils.empty_file ".mongit/trees/files" ;
+  Outils.empty_file ".mongit/trees/files"
 (* ================ *)
 
 
@@ -32,27 +32,24 @@ let remove () =
     exit 1) ;
 
   printf "Do you really want to delete the repo ? [yes or no]\n" ;
-  if read_line () = "yes" then Outils.remove "./.mongit"
+  if read_line () = "yes" then Outils.remove ".mongit"
 (* ================ *)
   
 
 (* ===== HASH-FILE ===== *)
 let hash_file f =
-  try
-    let repo = Outils.repo_find_chk () in
-    Outils.store f (Filename.concat repo "files")
-  with
-  | No_repo ->
-      eprintf "Error : \"%s\" isn't related to any repo\n" f ;
-      exit 1
-  | Not_exists ->
-      eprintf "Error : the path \"%s\" did not match any file\n" f ;
-      exit 1
+  let repo = Outils.repo_find_chk () in
+  Outils.exists_chk f ;
+  Outils.store f (Filename.concat repo "files")
 (* ================ *)
 
 
-(* ===== CAT-FILE ===== *) 
+(* ===== CAT ===== *) 
 let cat_file str_h =
   let dir = Filename.concat (Outils.repo_find_chk ()) "files" in
+  Outils.load str_h dir stdout
+
+let cat_commit str_h =
+  let dir = Filename.concat (Outils.repo_find_chk ()) "commits" in
   Outils.load str_h dir stdout
 (* ================ *)

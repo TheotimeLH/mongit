@@ -31,10 +31,10 @@ let to_suppr = ref []
 let tbl_files = ref IdMap.empty 
 let load_tbl_files repo =
   let ic = Scanf.Scanning.open_in (Filename.concat repo "trees/files") in
-  try while true do
+  begin try while true do
     Scanf.bscanf ic "%s %s\n" (*(Hashtbl.add tbl_files)*)
     (fun f key -> tbl_files := IdMap.add f key !tbl_files)
-  done with | End_of_file -> () ;
+  done with | End_of_file -> () end ;
   Scanf.Scanning.close_in ic 
   
 
@@ -46,7 +46,8 @@ let cmd_add b f =
   Outils.exists_chk f ;
   let oc = open_out_gen [Open_creat ; Open_append] mkfile_num
     (Filename.concat repo "to_be_commited") in
-  output_string oc (sprintf "%s %s\n" (if b then "add" else "minus") f) ;
+  output_string oc 
+    (sprintf "%s %s\n" (if b then "add" else "minus") (Unix.realpath f)) ;
   close_out oc
 (* ================ *)
 
@@ -69,10 +70,12 @@ let mk_todo_list repo =
     | None -> tl := New f :: !tl
     | Some key -> tl := Change(key,f) :: !tl
   in
-  let add_d d =
+  let rec add_d d =
     let ds = Filename.concat dr_trees (Outils.sha_name d) in
     if not (Sys.file_exists ds) then dir_to_crt := d :: !dir_to_crt ;
-    Array.iter ((fun df -> add_d_or_f (Filename.concat d df)) (Sys.readdir d)
+    Array.iter 
+      (fun df -> if df.[0] <> '.' then add_d_or_f (Filename.concat d df)) 
+      (Sys.readdir d)
   and add_d_or_f df =
     if Sys.is_directory df then add_d df else add_f df
   in
@@ -86,57 +89,65 @@ let mk_todo_list repo =
     in
     tl := suppr !tl
   in
-  let minus_d d =
+  let rec minus_d d =
     dir_to_crt := Outils.list_rm_fst_occ d !dir_to_crt ;
-    Array.iter ((fun df -> minus_d_or_f (Filename.concat d df)) (Sys.readdir d)
+    Array.iter 
+      (fun df -> if df.[0] <> '.' then minus_d_or_f (Filename.concat d df)) 
+      (Sys.readdir d)
   and minus_d_or_f df =
     if Sys.is_directory df then minus_d df else minus_f df
   in
   (* === *)
 
   let ic = Scanf.Scanning.open_in to_be in
-  try while true do
+  begin try while true do
     Scanf.bscanf ic "%s %s\n"
     (fun a df -> Outils.exists_chk df ;
-      let df = Unix.realpath df in
       if a = "add" then add_d_or_f df else minus_d_or_f df)
-  done with | End_of_file -> () ;
+  done with | End_of_file -> () end ;
   Scanf.Scanning.close_in ic ;
 
-  !tl , !dir_to_crt
+  List.iter (Tree.add_dir dr_trees) !dir_to_crt ;
+  !tl
 (* ================ *)
 
 (* ===== add_real / effectif ===== *)
-let add_real commit_ch dr_files t =
+let add_real commit_ch dr_files dr_trees t =
   begin match t with
   | New f ->
       incr nb_new ;
       Outils.store f dr_files ;
+      Tree.add_file dr_trees f ;
       let key = Outils.mksha f in
+      tbl_files := IdMap.add f key !tbl_files ;
       fprintf commit_ch "NEW %s ; key = %s\n\n" f key
   | Change (old_key,f) ->
+      let new_key = Outils.mksha f in
+      if old_key <> new_key then begin
     (* Store la nouvelle version *)
       Outils.store f dr_files ;
-      let new_key = Outils.mksha f in
-      Hashtbl.add tbl_files f new_key ;
+      tbl_files := IdMap.add f new_key !tbl_files ;
 
     (* Charger l'ancienne, via un fichier où la décompresser *)
       let tmp_old_file = Filename.concat dr_files "tmp_old_file" in
-      let old_ch = open_out_gen [Open_creat] mkfile_num tmp_old_file in
+      let old_ch = open_out tmp_old_file in
       Outils.load old_key dr_files old_ch ;
       close_out old_ch ;
     (* Utiliser Scan_diff pour calculer les différences *)
       let old_ch = open_in tmp_old_file
       and new_ch = open_in f in
-      let nb_diff,old_in_new = Scan_diff.main old_ch new_ch in
+      let nb_ok,old_in_new,t_placeN = Scan_diff.main old_ch new_ch in
       close_in old_ch ; close_in new_ch ;
+      print_debug "Modif de %s, nb = %d, distribution :\n%s\n" f nb_ok
+        (  Array.map string_of_int t_placeN 
+        |> Array.to_list
+        |> (String.concat " ") ) ;
     (* Charger les deux versions *)
       let t_old = Outils.readlines tmp_old_file in
-      let t_new = Outils.readlines f in
       let lenO = Array.length t_old in
-      let lenN = Array.length t_new in
+      let lenN = Array.length t_placeN in
     (* Voir si on garde l'ancien *)
-      if (nb_diff * 2 > lenN) && (lenO > 5)
+      if (nb_ok * 2 <= lenN) && (lenO > 5)
       then begin 
       (* REBUILT : ON GARDE en mémoire l'old et le new *)
         incr nb_rebuilt ;
@@ -157,19 +168,20 @@ let add_real commit_ch dr_files t =
           | Remove(i,j) ->
               fprintf commit_ch "Remove l-%d to l-%d (old numbering) :\n" i j ;
               for l = i to j do
-                input_string commit_ch t_old.(l)
+                output_string commit_ch t_old.(l)
               done
           | Modif ((i_old,j_old),(i_new,j_new)) ->
               fprintf commit_ch 
                 "Modif from l-%d,l-%d (old numbering) \
                  to l-%d,l-%d (new), rm :\n" i_old j_old i_new j_new ;
               for l = i_old to j_old do
-                input_string commit_ch t_old.(l)
+                output_string commit_ch t_old.(l)
               done
         in
         List.iter aux_modif old_in_new
       end ;
       Sys.remove tmp_old_file
+      end
       
   end ;
   printf "*" ; flush stdout
@@ -188,22 +200,26 @@ let cmd_commit () =
     eprintf "Nothing to commit, use mg -add first.\n"
   else begin
     printf "Listing..." ; flush stdout ;
-    let todo_list , dir_to_crt = mk_todo_list repo in
+    let todo_list = mk_todo_list repo in
     printf "%d files to handle\n" (List.length todo_list) ; flush stdout ;
     let tmp_file = Filename.concat dr_comms "tmp_commit_file" in
-    let commit_ch = open_out_gen [Open_creat ; Open_trunc] mkfile_num tmp_file in
-    List.iter (add_real commit_ch dr_files) todo_list ;
+    (* let commit_ch = open_out_gen [Open_creat ; Open_trunc] mkfile_num tmp_file in *)
+    (* Donne un bug trop bizarre *)
+    let commit_ch = open_out tmp_file in
+    List.iter (add_real commit_ch dr_files dr_trees) todo_list ;
     fprintf commit_ch "\n\nMESSAGE :\n%s" !msg ;
-    close_in commit_ch ;
+    close_out commit_ch ;
     Outils.store tmp_file dr_comms ;
     if not !bool_print_debug then Sys.remove tmp_file ;
     (* Maintenant que les nouvelles versions sont save, je 
        mets à jour la liste des fichiers : trees/files et je
        suppr les anciens. Je préfère supprimer les fichiers à la
        fin. Comme ça, si bug il y a, on n'a rien perdu. *)
-    let oc = open_out_gen [Open_trunc] 0 files in
+    let oc = open_out files in
     IdMap.iter (fprintf oc "%s %s\n") !tbl_files ;
     close_out oc ;
-    List.iter Outils.remove_hash !to_suppr
+    List.iter (Outils.remove_hash dr_files) !to_suppr ;
+    Sys.remove to_be ;
+    print_newline ()
   end
 (* ================ *)

@@ -1,4 +1,29 @@
 open Root
+open Printf
+
+(* === Small fonctions with not dependancies=== *)
+let fn_concat_list l =
+  List.fold_left Filename.concat (List.hd l) (List.tl l)
+
+let empty_file f =
+  let oc = open_out_gen [Open_creat] mkfile_num f in
+  close_out oc
+
+let rec list_rm_fst_occ x = function
+  | [] -> []
+  | h::q -> if x=h then q else h::list_rm_fst_occ x q
+
+let readlines f =
+  let ic = open_in f in
+  let l = ref [] in
+  begin try while true do
+    l := (input_line ic ^ "\n") :: !l
+  done with | End_of_file -> () end ;
+  close_in ic ;
+  Array.of_list (List.rev !l)
+
+(* ================== *)
+
 
 (* ===== REMOVE ===== *)
 let rec remove path = 
@@ -31,11 +56,19 @@ let repo_find () = repo_find_with_path "."
 (* ================== *)
   
 
-(* ===== FILENAME CONCAT LIST ===== *)
-let fn_concat_list l =
-  List.fold_left Filename.concat (List.hd l) (List.tl l)
+(* ===== CHECK ===== *)
+let repo_find_chk () =
+  try repo_find ()
+  with | No_repo ->
+    eprintf "Error : no repo found (cwd : \"%s\")\n" (Unix.getcwd ()) ;
+    exit 1
+    
+let exists_chk f =
+  if not (Sys.file_exists f) then
+  ( eprintf "Error : the path \"%s\" did not match any file\n" f ;
+    exit 1 )
 (* ================== *)
-  
+
 
 (* ===== HASH ===== *)
 let sha_name nm =
@@ -77,7 +110,7 @@ let uncompress infile outfile =
 (* ================== *)
 
 
-(* ===== STORE / LOAD ===== *)
+(* ===== STORE / LOAD / RM ===== *)
 let store f dir =
   let key,rest = mksha f |> cut_sha in
   let subdir = Filename.concat dir key in
@@ -87,52 +120,20 @@ let store f dir =
   compress f out
 
 let load str_h dir oc =
-  let key,rest = Outils.cut_sha str_h in
-  let file = Outils.fn_concat_list [dir;key;rest] in
-  Outils.exists_chk file ;
+  let key,rest = cut_sha str_h in
+  let file = fn_concat_list [dir;key;rest] in
+  exists_chk file ;
   let ic = open_in_bin file in
-  Outils.uncompress_opened ic oc
-(* ================== *)
+  uncompress_opened ic oc
 
-
-(* ===== CHECK ===== *)
-let repo_find_chk () =
-  try repo_find ()
-  with | No_repo ->
-    eprintf "Error : no repo found (cwd : \"%s\")\n" (Unix.getcwd ()) ;
-    exit 1
-    
-let exists_chk f =
-  if not (Sys.file_exists f) then
-  ( eprintf "Error : the path \"%s\" did not match any file\n" f ;
-    exit 1 )
-(* ================== *)
-
-
-(* AUX *)
-let empty_file f =
-  let oc = open_out_gen [Open_creat] mkfile_num f in
-  close_out oc
-
-
-let rec list_rm_fst_occ x = function
-  | [] -> []
-  | h::q -> if x=h then q else h::list_rm_fst_occ x q
-
-let readlines f =
-  let ic = open_in f in
-  let l = ref [] in
-  try while true do
-    l := (input_line ic ^ "\n") :: !l
-  done with | End_of_file -> () ;
-  close_in f ;
-  Array.of_list (List.rev !l)
-
-let remove_hash str_h dir =
-  let key,rest = Outils.cut_sha str_h in
+let remove_hash dir str_h =
+  let key,rest = cut_sha str_h in
   let subdir = Filename.concat dir key in
   let file = Filename.concat subdir rest in
   Sys.remove file ;
   try Sys.rmdir subdir 
   with | _ (* not empty *) -> ()
+(* ================== *)
+
+
 
