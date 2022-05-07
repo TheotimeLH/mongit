@@ -1,5 +1,8 @@
 open Printf
+open Root
 
+(* ===== PRINT TO_BE ===== *)
+let l_to_be = ref []
 let print_to_be repo = (* avec cwd = root *)
   (* Fonction extraite du code de Commit.mk_todo_list *)
   let l = ref [] in
@@ -44,13 +47,38 @@ let print_to_be repo = (* avec cwd = root *)
   l := List.rev !l ;
   printf "[COMMIT] The following files are waiting for a -commit : \n" ;
   List.iter (printf "\t\t%s\n") !l ;
+  l_to_be := !l
   end
+(* ==================== *)
 
 
+(* ===== PRINT CHANGED ===== *)
+let print_changed tbl_files =
+  if IdMap.is_empty tbl_files
+  then printf "[CHANGES] No file changed.\n"
+  else begin
+    printf 
+     "[CHANGES] The following files are different from the version \
+      saved and not in the to_be_commited list: \n" ;
+    let fct fn stored_key =
+      if (Outils.mksha fn <> stored_key) && not (List.mem fn !l_to_be)
+      then printf "\t\t%s\n" fn in
+    IdMap.iter fct tbl_files
+  end
+(* ==================== *)
+
+
+(* ===== MAIN ===== *)
 let cmd_status () =
   let repo = Outils.repo_find_chk () in
-(*  let tbl_files = Outils.load_tbl_files repo in *)
   Root.real_cwd := Unix.getcwd () ;
   Unix.chdir (Filename.dirname repo) ;
+  (* 1) ceux qui attendent *)
   print_to_be repo ;
+  printf " ================================================= \n" ;
+  (* 2) ceux qui ont changé *)
+  let tbl_files = Outils.load_tbl_files repo in
+  print_changed tbl_files ;
+  printf " =================================================\n" ;
   Unix.chdir !Root.real_cwd 
+(* ==================== *)
