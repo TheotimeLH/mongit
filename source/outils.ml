@@ -17,7 +17,7 @@ let readlines f =
   let ic = open_in f in
   let l = ref [] in
   begin try while true do
-    l := (input_line ic ^ "\n") :: !l
+    l := (input_line ic) :: !l
   done with | End_of_file -> () end ;
   close_in ic ;
   Array.of_list (List.rev !l)

@@ -168,14 +168,14 @@ let add_real commit_ch dr_files dr_trees t =
           | Remove(i,j) ->
               fprintf commit_ch "Remove l-%d to l-%d (old numbering) :\n" i j ;
               for l = i to j do
-                output_string commit_ch t_old.(l)
+                output_string commit_ch (t_old.(l)^"\n")
               done
           | Modif ((i_old,j_old),(i_new,j_new)) ->
               fprintf commit_ch 
                 "Modif from l-%d,l-%d (old numbering) \
                  to l-%d,l-%d (new), rm :\n" i_old j_old i_new j_new ;
               for l = i_old to j_old do
-                output_string commit_ch t_old.(l)
+                output_string commit_ch (t_old.(l)^"\n")
               done
         in
         List.iter aux_modif old_in_new

@@ -39,7 +39,10 @@ let () = speclist :=
        For instance you can -add a whole directory and then -minus just one file the dir contains.");
    ("-commit",
       Unit subparser_commit,
-      "Save the modifications in the repo");
+      "Create a \"repo_tree.pdf\" file (using Graphviz's dot command).");
+   ("-ls",
+      Unit Tree.cmd_ls , 
+      "Create a new repository for the current working directory.");
    ]
     
 let () = Arg.parse_dynamic speclist Tmp.aff_qlqch ""
