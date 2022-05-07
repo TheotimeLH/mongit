@@ -13,3 +13,5 @@ module IdMap = Map.Make(String)
 
 let mkdir_num = 0o775
 let mkfile_num = 0o664
+
+let real_cwd = ref "" 

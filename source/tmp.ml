@@ -14,5 +14,5 @@ let aff_qlqch str =
   let key,rest = Outils.hash_file 
     "/home/theotime/Documents/Projets/mongit/source/tmp.ml" in 
   Printf.printf "key : %s , rest : %s\n" key rest ; *)
+(*  print_debug "Test de rootpath : %s\n" (Outils.rootpath "patate") ; *)
   print_debug "Fin de la cmd avec : %s\n" str ;
-  

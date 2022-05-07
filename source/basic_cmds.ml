@@ -15,7 +15,7 @@ let init () =
      ".mongit/trees" ] ;
 
   Outils.empty_file 
-    (Unix.realpath "." 
+    ("" (* rootpath of root *)
     |> Outils.sha_name 
     |> (Filename.concat ".mongit/trees")) ;
   Outils.empty_file ".mongit/trees/files"

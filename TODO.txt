@@ -1,3 +1,15 @@
+rootpath
+-> ls-tree stylé
+status
+restore
+rename
+remove
+ignore
+
+
+
+
+
 init
 add
 commit

@@ -22,6 +22,9 @@ let readlines f =
   close_in ic ;
   Array.of_list (List.rev !l)
 
+let str_list l =
+  List.map string_of_int l
+  |> (String.concat " ")
 (* ================== *)
 
 
@@ -67,6 +70,27 @@ let exists_chk f =
   if not (Sys.file_exists f) then
   ( eprintf "Error : the path \"%s\" did not match any file\n" f ;
     exit 1 )
+(* ================== *)
+
+
+(* ==== ROOT PATH ==== *)
+let rootpath f =
+  exists_chk f ;
+  let full = Unix.realpath f in
+  let root = Filename.dirname (repo_find_chk ()) in
+  if not (String.starts_with ~prefix:root full) then
+  ( eprintf "Error : the path \"%s\" leads out of the repo\n" f ;
+    exit 1)
+  else if full=root then ""
+  else (
+    let lf = String.length full in
+    let lr = String.length root in
+    String.sub full (lr+1) (lf-lr-1)
+  )
+  
+let root_to_realpath repo f =
+  let r = Filename.dirname repo in
+  Filename.concat r f
 (* ================== *)
 
 

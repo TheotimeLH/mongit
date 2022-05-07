@@ -26,6 +26,7 @@ let msg = ref ""
 let nb_new = ref 0
 let nb_rebuilt = ref 0
 let nb_minor = ref 0
+let nb_nothing = ref 0
 let to_suppr = ref []
 
 let tbl_files = ref IdMap.empty 
@@ -43,11 +44,12 @@ let load_tbl_files repo =
    Sachant qu'on peut git add un dossier et il y aura juste son nom. *)
 let cmd_add b f =
   let repo = Outils.repo_find_chk () in
-  Outils.exists_chk f ;
   let oc = open_out_gen [Open_creat ; Open_append] mkfile_num
     (Filename.concat repo "to_be_commited") in
-  output_string oc 
-    (sprintf "%s %s\n" (if b then "add" else "minus") (Unix.realpath f)) ;
+  let rf = Outils.rootpath f in
+  if rf = "" (* root *)
+  then fprintf oc "all %s\n" (if b then "add" else "minus")
+  else fprintf oc "%s %s\n" (if b then "add" else "minus") (Outils.rootpath f) ;
   close_out oc
 (* ================ *)
 
@@ -65,12 +67,12 @@ let mk_todo_list repo =
   let tl = ref [] in
   let dir_to_crt = ref [] in
   (* ADD *)
-  let add_f f = (* en realpath *)
+  let add_f f = (* en rootpath MAIS cwd = root*)
     match IdMap.find_opt f !tbl_files with
     | None -> tl := New f :: !tl
     | Some key -> tl := Change(key,f) :: !tl
   in
-  let rec add_d d =
+  let rec add_d d = (* en rootpath *)
     let ds = Filename.concat dr_trees (Outils.sha_name d) in
     if not (Sys.file_exists ds) then dir_to_crt := d :: !dir_to_crt ;
     Array.iter 
@@ -89,7 +91,7 @@ let mk_todo_list repo =
     in
     tl := suppr !tl
   in
-  let rec minus_d d =
+  let rec minus_d d = (* en rootpath et root=cwd *)
     dir_to_crt := Outils.list_rm_fst_occ d !dir_to_crt ;
     Array.iter 
       (fun df -> if df.[0] <> '.' then minus_d_or_f (Filename.concat d df)) 
@@ -102,11 +104,21 @@ let mk_todo_list repo =
   let ic = Scanf.Scanning.open_in to_be in
   begin try while true do
     Scanf.bscanf ic "%s %s\n"
-    (fun a df -> Outils.exists_chk df ;
-      if a = "add" then add_d_or_f df else minus_d_or_f df)
+    (fun a df -> 
+      if a="all" then begin
+        Array.iter 
+          (fun sub -> if sub.[0] <> '.' then 
+           if df = "add" then add_d_or_f sub else minus_d_or_f sub) 
+          (Sys.readdir (Unix.getcwd ()))
+      end
+      else begin
+      Outils.exists_chk df ;
+      if a="add" then add_d_or_f df else minus_d_or_f df
+      end)
   done with | End_of_file -> () end ;
   Scanf.Scanning.close_in ic ;
 
+  print_debug "dir_to_crt : %s\n" (String.concat " " !dir_to_crt) ;
   List.iter (Tree.add_dir dr_trees) !dir_to_crt ;
   !tl
 (* ================ *)
@@ -114,11 +126,11 @@ let mk_todo_list repo =
 (* ===== add_real / effectif ===== *)
 let add_real commit_ch dr_files dr_trees t =
   begin match t with
-  | New f ->
+  | New f -> (* en rootpath et root=cwd*)
       incr nb_new ;
       Outils.store f dr_files ;
-      Tree.add_file dr_trees f ;
       let key = Outils.mksha f in
+      Tree.add_file dr_trees f key;
       tbl_files := IdMap.add f key !tbl_files ;
       fprintf commit_ch "NEW %s ; key = %s\n\n" f key
   | Change (old_key,f) ->
@@ -127,7 +139,6 @@ let add_real commit_ch dr_files dr_trees t =
     (* Store la nouvelle version *)
       Outils.store f dr_files ;
       tbl_files := IdMap.add f new_key !tbl_files ;
-
     (* Charger l'ancienne, via un fichier où la décompresser *)
       let tmp_old_file = Filename.concat dr_files "tmp_old_file" in
       let old_ch = open_out tmp_old_file in
@@ -139,9 +150,10 @@ let add_real commit_ch dr_files dr_trees t =
       let nb_ok,old_in_new,t_placeN = Scan_diff.main old_ch new_ch in
       close_in old_ch ; close_in new_ch ;
       print_debug "Modif de %s, nb = %d, distribution :\n%s\n" f nb_ok
-        (  Array.map string_of_int t_placeN 
+        (Outils.str_list (Array.to_list t_placeN)) ;
+        (*(  Array.map string_of_int t_placeN 
         |> Array.to_list
-        |> (String.concat " ") ) ;
+        |> (String.concat " ") ) ; TODO *)
     (* Charger les deux versions *)
       let t_old = Outils.readlines tmp_old_file in
       let lenO = Array.length t_old in
@@ -182,6 +194,7 @@ let add_real commit_ch dr_files dr_trees t =
       end ;
       Sys.remove tmp_old_file
       end
+      else incr nb_nothing
       
   end ;
   printf "*" ; flush stdout
@@ -196,12 +209,14 @@ let cmd_commit () =
   let dr_comms = Filename.concat repo "commits" in
   let dr_trees = Filename.concat repo "trees" in
   let dr_files = Filename.concat repo "files" in
+  Root.real_cwd := Unix.getcwd () ;
+  Unix.chdir (Filename.dirname repo) ;
   if not (Sys.file_exists to_be) then
     eprintf "Nothing to commit, use mg -add first.\n"
   else begin
     printf "Listing..." ; flush stdout ;
     let todo_list = mk_todo_list repo in
-    printf "%d files to handle\n" (List.length todo_list) ; flush stdout ;
+    printf "%d files to handle\n|" (List.length todo_list) ; flush stdout ;
     let tmp_file = Filename.concat dr_comms "tmp_commit_file" in
     (* let commit_ch = open_out_gen [Open_creat ; Open_trunc] mkfile_num tmp_file in *)
     (* Donne un bug trop bizarre *)
@@ -220,6 +235,8 @@ let cmd_commit () =
     close_out oc ;
     List.iter (Outils.remove_hash dr_files) !to_suppr ;
     Sys.remove to_be ;
-    print_newline ()
-  end
+    printf "\nDone. new : %d ; rebuilt : %d ; minor changes : %d ; no change : %d\n"
+      !nb_new !nb_rebuilt !nb_minor !nb_nothing
+  end ;
+  Unix.chdir !Root.real_cwd 
 (* ================ *)
