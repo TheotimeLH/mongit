@@ -226,3 +226,18 @@ let () =
   main oldch newch ;
   close_in oldch ; close_in newch *)
 
+(* === AUX === *)
+let count_diff (sol : change list) =
+  let nb_add = ref 0 in
+  let nb_del = ref 0 in
+  let fct = function
+    | Add    (i_new,j_new) -> 
+        nb_add := j_new - i_new + 1 + !nb_add
+    | Remove (i_old,j_old) -> 
+        nb_del := j_old - i_old + 1 + !nb_del
+    | Modif ((i_old,j_old),(i_new,j_new)) ->
+        nb_add := j_new - i_new + 1 + !nb_add ;
+        nb_del := j_old - i_old + 1 + !nb_del
+  in
+  List.iter fct sol ;
+  !nb_del,!nb_add

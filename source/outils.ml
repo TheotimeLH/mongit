@@ -160,4 +160,14 @@ let remove_hash dir str_h =
 (* ================== *)
 
 
-
+(* ===== LOAD TBL FILES ===== *)
+let load_tbl_files repo =
+  let tbl_files = ref IdMap.empty in
+  let ic = Scanf.Scanning.open_in (Filename.concat repo "trees/files") in
+  begin try while true do
+    Scanf.bscanf ic "%s %s\n" 
+    (fun f key -> tbl_files := IdMap.add f key !tbl_files)
+  done with | End_of_file -> () end ;
+  Scanf.Scanning.close_in ic ;
+  !tbl_files
+(* ================== *)

@@ -28,16 +28,9 @@ let nb_rebuilt = ref 0
 let nb_minor = ref 0
 let nb_nothing = ref 0
 let to_suppr = ref []
-
+let nb_lines_add = ref 0
+let nb_lines_del = ref 0
 let tbl_files = ref IdMap.empty 
-let load_tbl_files repo =
-  let ic = Scanf.Scanning.open_in (Filename.concat repo "trees/files") in
-  begin try while true do
-    Scanf.bscanf ic "%s %s\n" (*(Hashtbl.add tbl_files)*)
-    (fun f key -> tbl_files := IdMap.add f key !tbl_files)
-  done with | End_of_file -> () end ;
-  Scanf.Scanning.close_in ic 
-  
 
 (* ===== cmd_add ===== *)
 (* La commande add ajoute juste la liste des fichiers à ajouter. 
@@ -61,7 +54,7 @@ type addtype =
 let mk_todo_list repo =
   let to_be    = Filename.concat repo "to_be_commited" in
   let dr_trees = Filename.concat repo "trees" in
-  load_tbl_files repo ;
+  tbl_files := Outils.load_tbl_files repo ;
 
   (* Les fonctions auxiliaires principales *)
   let tl = ref [] in
@@ -109,7 +102,7 @@ let mk_todo_list repo =
         Array.iter 
           (fun sub -> if sub.[0] <> '.' then 
            if df = "add" then add_d_or_f sub else minus_d_or_f sub) 
-          (Sys.readdir (Unix.getcwd ()))
+          (Sys.readdir ".")
       end
       else begin
       Outils.exists_chk df ;
@@ -151,9 +144,9 @@ let add_real commit_ch dr_files dr_trees t =
       close_in old_ch ; close_in new_ch ;
       print_debug "Modif de %s, nb = %d, distribution :\n%s\n" f nb_ok
         (Outils.str_list (Array.to_list t_placeN)) ;
-        (*(  Array.map string_of_int t_placeN 
-        |> Array.to_list
-        |> (String.concat " ") ) ; TODO *)
+      let nb_del,nb_add = Scan_diff.count_diff old_in_new in
+      nb_lines_del := nb_del + !nb_lines_del ;
+      nb_lines_add := nb_add + !nb_lines_add ;
     (* Charger les deux versions *)
       let t_old = Outils.readlines tmp_old_file in
       let lenO = Array.length t_old in
@@ -236,7 +229,9 @@ let cmd_commit () =
     List.iter (Outils.remove_hash dr_files) !to_suppr ;
     Sys.remove to_be ;
     printf "\nDone. new : %d ; rebuilt : %d ; minor changes : %d ; no change : %d\n"
-      !nb_new !nb_rebuilt !nb_minor !nb_nothing
+      !nb_new !nb_rebuilt !nb_minor !nb_nothing ;
+    printf "Total : %d files changed, %d insertions(+), %d deletions(-)\n"
+      (!nb_rebuilt + !nb_minor) !nb_lines_del !nb_lines_add ;
   end ;
   Unix.chdir !Root.real_cwd 
 (* ================ *)

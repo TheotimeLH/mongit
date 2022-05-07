@@ -1,5 +1,3 @@
-rootpath
--> ls-tree stylé
 status
 restore
 rename
@@ -17,6 +15,8 @@ push
 pop
 status
 restore
+rootpath
+-> ls-tree stylé
 
 Je veux des merges propre,
 On sauvegarde juste les différences, du genre
