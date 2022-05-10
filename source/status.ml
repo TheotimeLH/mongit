@@ -9,7 +9,9 @@ let print_to_be repo = (* avec cwd = root *)
   (* add *)
   let add_f = fun f -> l := f :: !l in
   let rec add_d d = Array.iter 
-    (fun df -> if df.[0] <> '.' then add_d_or_f (Filename.concat d df)) 
+    (fun df -> 
+      if !include_secret || df.[0] <> '.' 
+      then add_d_or_f (Filename.concat d df)) 
     (Sys.readdir d)
   and add_d_or_f df =
     if Sys.is_directory df then add_d df else add_f df
@@ -17,7 +19,9 @@ let print_to_be repo = (* avec cwd = root *)
   (* minus *)
   let minus_f = fun f -> l := Outils.list_rm_fst_occ f !l in
   let rec minus_d d = Array.iter 
-    (fun df -> if df.[0] <> '.' then minus_d_or_f (Filename.concat d df)) 
+    (fun df ->
+      if !include_secret || df.[0] <> '.' 
+      then minus_d_or_f (Filename.concat d df)) 
     (Sys.readdir d)
   and minus_d_or_f df =
     if Sys.is_directory df then minus_d df else minus_f df
@@ -34,7 +38,8 @@ let print_to_be repo = (* avec cwd = root *)
     (fun a df -> 
       if a="all" then begin
         Array.iter 
-          (fun sub -> if sub.[0] <> '.' then 
+          (fun sub ->
+           if !include_secret || sub.[0] <> '.' then
            if df = "add" then add_d_or_f sub else minus_d_or_f sub) 
           (Sys.readdir ".")
       end else begin

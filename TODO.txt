@@ -1,8 +1,8 @@
-status
-restore
-rename
 remove
-ignore
+rename
+status V2
+restore
+ignore avec REGEX
 
 
 

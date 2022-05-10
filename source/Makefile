@@ -8,7 +8,7 @@ clean:
 	dune clean
 	rm -f mongit
 
-cmd: mongit
+cmd: mk_mongit
 	cp -f mongit $$HOME/Documents/Projets/bin/mongit
 	cp -f mongit $$HOME/Documents/Projets/bin/mg
 

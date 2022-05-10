@@ -69,7 +69,9 @@ let mk_todo_list repo =
     let ds = Filename.concat dr_trees (Outils.sha_name d) in
     if not (Sys.file_exists ds) then dir_to_crt := d :: !dir_to_crt ;
     Array.iter 
-      (fun df -> if df.[0] <> '.' then add_d_or_f (Filename.concat d df)) 
+      (fun df ->
+        if !include_secret || df.[0] <> '.' 
+        then add_d_or_f (Filename.concat d df)) 
       (Sys.readdir d)
   and add_d_or_f df =
     if Sys.is_directory df then add_d df else add_f df
@@ -87,7 +89,9 @@ let mk_todo_list repo =
   let rec minus_d d = (* en rootpath et root=cwd *)
     dir_to_crt := Outils.list_rm_fst_occ d !dir_to_crt ;
     Array.iter 
-      (fun df -> if df.[0] <> '.' then minus_d_or_f (Filename.concat d df)) 
+      (fun df -> 
+        if !include_secret || df.[0] <> '.' 
+        then minus_d_or_f (Filename.concat d df)) 
       (Sys.readdir d)
   and minus_d_or_f df =
     if Sys.is_directory df then minus_d df else minus_f df
@@ -100,7 +104,7 @@ let mk_todo_list repo =
     (fun a df -> 
       if a="all" then begin
         Array.iter 
-          (fun sub -> if sub.[0] <> '.' then 
+          (fun sub -> if !include_secret || sub.[0] <> '.' then 
            if df = "add" then add_d_or_f sub else minus_d_or_f sub) 
           (Sys.readdir ".")
       end

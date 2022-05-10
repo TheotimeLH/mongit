@@ -14,12 +14,18 @@ let () = speclist :=
   [("-debug", 
       Set Root.bool_print_debug , 
       "Print debug messages");
+   ("-include_secret", 
+      Set Root.include_secret , 
+      "Enables operations over secret files");
    ("-init",
       Unit Basic_cmds.init , 
       "Create a new repository for the current working directory.");
    ("-remove",
       Unit Basic_cmds.remove ,
       "Remove the cwd repo.");
+   ("-update",
+      Unit Basic_cmds.update ,
+      "Update mongit.");
    ("-hash_file",
       String Basic_cmds.hash_file ,
       "< mg -hash_file \"filename\" > will store \"filename\" at .mongit/files/");
@@ -46,6 +52,9 @@ let () = speclist :=
    ("-status",
       Unit Status.cmd_status , 
       "Show the status of the copy.");
+   ("-restore",
+      String Files_manip.cmd_restore ,
+      "Restore the file requested (or the whole directory).");
    ]
     
 let () = Arg.parse_dynamic speclist Tmp.aff_qlqch ""

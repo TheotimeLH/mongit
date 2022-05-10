@@ -28,7 +28,7 @@ let str_list l =
 (* ================== *)
 
 
-(* ===== REMOVE ===== *)
+(* ===== REMOVE / CREATE ===== *)
 let rec remove path = 
   if Sys.file_exists path
   then match Sys.is_directory path with
@@ -38,6 +38,13 @@ let rec remove path =
     Unix.rmdir path
   | false ->
     Sys.remove path
+
+let rec create_dir path =
+  if not (Sys.file_exists path)
+  then (
+    create_dir (Filename.dirname path) ;
+    Unix.mkdir path Root.mkdir_num
+  )
 (* ================== *)
 
 

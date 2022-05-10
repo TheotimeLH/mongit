@@ -36,6 +36,18 @@ let remove () =
 (* ================ *)
   
 
+(* ===== UPDATE ===== *)
+let update () =
+  Root.real_cwd := Unix.getcwd () ;
+  Unix.chdir "/home/theotime/Documents/Projets/mongit/source" ;
+  let ret = Sys.command "make cmd" in
+  if ret <> 0 then
+    ( eprintf "Mongit update crashed.\n" ;
+      exit 1) ;
+  Unix.chdir !Root.real_cwd
+(* ================ *)
+
+
 (* ===== HASH-FILE ===== *)
 let hash_file f =
   let repo = Outils.repo_find_chk () in

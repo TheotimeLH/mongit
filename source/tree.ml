@@ -77,3 +77,60 @@ let cmd_ls () =
       | _ -> failwith "problem with external dot cmd\n"
   end *)
 (* ================ *)
+
+
+(* ===== FIND KEY  ===== *)
+(* Dans la version actuelle il n'y a qu'un seul arbre.
+   Donc c'est presque bête d'avoir un systeme de tree.
+   D'ailleurs la clé c'est juste le nom hashé. 
+   Gros boulot à faire pour les branches. *)
+let find_key_d dr_trees d = (* en rootpath *)
+  let key = Outils.sha_name d in
+  let t = Filename.concat dr_trees key in
+  if not (Sys.file_exists t) then raise Not_in_the_tree
+  else key
+
+let find_key_f dr_trees f =
+  let d = Filename.dirname f in
+  let dkey = find_key_d dr_trees d in
+  print_debug "a trouvé le dossier %s\n" dkey;
+  flush stdout ;
+  let tree = Filename.concat dr_trees dkey in
+  let bn = Filename.basename f in
+  let ic = Scanf.Scanning.open_in tree in
+  let rec read () =
+    Scanf.bscanf ic "%s %s %s\n"
+    (fun t s nk ->
+      if t="file" && s=bn then (Scanf.Scanning.close_in ic ; nk)
+      else read ())
+  in
+  try read ()
+  with | End_of_file -> 
+    Scanf.Scanning.close_in ic ; raise Not_in_the_tree
+(* ================ *)
+
+
+(* ===== ENUMERATE ===== *)
+let enumerate dr_trees d =
+  let l = ref [] in
+  let rec read dir key =
+    let tree = Filename.concat dr_trees key in
+    Outils.exists_chk tree ;
+    let ic = Scanf.Scanning.open_in tree in
+    begin try while true do
+      Scanf.bscanf ic "%s %s %s\n"
+      (fun t s nk ->
+        if t="dir" then read (Filename.concat dir s) nk
+        else if !include_secret || s.[0] <> '.' 
+        then l := (Filename.concat dir s,nk) :: !l)
+    done with | End_of_file -> () end ;
+  in
+  read d (find_key_d dr_trees d) ;
+  !l
+
+let enumerate_d_or_f dr_trees df = (* df exists *)
+  print_debug "enumerate df = %s\n" df ;
+  if df="" || Sys.is_directory df
+  then enumerate dr_trees df
+  else [(df,find_key_f dr_trees df)]
+(* ================ *)
