@@ -9,6 +9,11 @@ let empty_file f =
   let oc = open_out_gen [Open_creat] mkfile_num f in
   close_out oc
 
+let str_file f s =
+  let oc = open_out_gen [Open_creat] mkfile_num f in
+  output_string oc s ;
+  close_out oc
+
 let rec list_rm_fst_occ x = function
   | [] -> []
   | h::q -> if x=h then q else h::list_rm_fst_occ x q
@@ -25,6 +30,8 @@ let readlines f =
 let str_list l =
   List.map string_of_int l
   |> (String.concat " ")
+
+let np s = if s="." then "" else s
 (* ================== *)
 
 
@@ -84,7 +91,7 @@ let exists_chk f =
 let rootpath f =
   exists_chk f ;
   let full = Unix.realpath f in
-  let root = Filename.dirname (repo_find_chk ()) in
+  let root = Filename.dirname !repo in
   if not (String.starts_with ~prefix:root full) then
   ( eprintf "Error : the path \"%s\" leads out of the repo\n" f ;
     exit 1)
@@ -95,9 +102,31 @@ let rootpath f =
     String.sub full (lr+1) (lf-lr-1)
   )
   
-let root_to_realpath repo f =
-  let r = Filename.dirname repo in
-  Filename.concat r f
+let root_to_realpath f =
+  Filename.concat !Root.root f
+(* ================== *)
+
+(* ===== FIND BRANCH ===== *)
+let find_branch () =
+  let f = Filename.concat !repo "branches/HEAD" in
+  let ic = open_in f in
+  branch := input_line ic ;
+  close_in ic
+
+let with_branch s =
+  sprintf "%s:%s" !branch s
+(* ================== *)
+
+
+(* ===== INIT ===== *)
+let init () =
+  Root.repo := repo_find_chk () ;
+  Root.root     := Filename.dirname !repo ;
+  Root.dr_trees := Filename.concat !repo "trees" ;
+  Root.dr_comms := Filename.concat !repo "commits" ;
+  Root.dr_files := Filename.concat !repo "files" ;
+  Root.to_be    := Filename.concat !repo "to_be_commited" ;
+  Root.branch   := find_branch ()
 (* ================== *)
 
 
@@ -166,15 +195,3 @@ let remove_hash dir str_h =
   with | _ (* not empty *) -> ()
 (* ================== *)
 
-
-(* ===== LOAD TBL FILES ===== *)
-let load_tbl_files repo =
-  let tbl_files = ref IdMap.empty in
-  let ic = Scanf.Scanning.open_in (Filename.concat repo "trees/files") in
-  begin try while true do
-    Scanf.bscanf ic "%s %s\n" 
-    (fun f key -> tbl_files := IdMap.add f key !tbl_files)
-  done with | End_of_file -> () end ;
-  Scanf.Scanning.close_in ic ;
-  !tbl_files
-(* ================== *)

@@ -1,26 +1,7 @@
 open Root
 open Scan_diff
 open Printf
-(* Pour commit :
-  On commence par énumerer les fichiers, et voir lesquels sont des changements
-  et lesquels sont créés. Puis on les traite effectivement. Et ceux qui n'ont 
-  pas crash (faire un try with _ ->) sur la création, ils vont être add au tree.
-  Et une fois fini, on update le tree. *)
-  (* Utiliser .mongit/trees/files qui a des lignes filename -> sha key actuel
-     les mettre dans une table pour savoir qui est déjà présent
-     pour ajouter un file, on regarde si présent via la table
-     si besoin on l'add en Unix.realpath.
-     Pour un dir, on regarde si déjà présent en regardant si
-     le fichier associé existe. Dans tous les cas on partira récursivement
-     sur les fils mais parce que dans la liste après
-     etape 1, 
-     Préprocess les add et minus avant, en ouvrant les dirs
-     et faire une liste des add à faire dans l'ordre
-     etape 2, faire ce qui précède, et donc savoir addtype
-     et faire l'arbre.
-     etape 3, avec la liste des files à add (osef l'ordre) en addtype, 
-     on les traite 1 par 1, en utilisant le scan_diff
-*)
+
 (* === Ref === *)
 let msg = ref ""
 let nb_new = ref 0
@@ -31,24 +12,6 @@ let to_suppr = ref []
 let nb_lines_add = ref 0
 let nb_lines_del = ref 0
 let tbl_files = ref IdMap.empty 
-
-(* ===== cmd_add ===== *)
-(* La commande add ajoute juste la liste des fichiers à ajouter. 
-   Sachant qu'on peut git add un dossier et il y aura juste son nom. *)
-let cmd_add b f =
-  let repo = Outils.repo_find_chk () in
-  let oc = open_out_gen [Open_creat ; Open_append] mkfile_num
-    (Filename.concat repo "to_be_commited") in
-  let rf = Outils.rootpath f in
-  if rf = "" (* root *)
-  then fprintf oc "all %s\n" (if b then "add" else "minus")
-  else fprintf oc "%s %s\n" (if b then "add" else "minus") (Outils.rootpath f) ;
-  close_out oc
-(* ================ *)
-
-type addtype = 
-  | New of string (* filename *)
-  | Change of string * string (* old sha key, filename *)
 
 (* ===== ETAPE 1 ===== *)
 let mk_todo_list repo =
@@ -202,7 +165,6 @@ let add_real commit_ch dr_files dr_trees t =
 let cmd_commit () =
   let repo = Outils.repo_find_chk () in
   let to_be    = Filename.concat repo "to_be_commited" in
-  let files    = Filename.concat repo "trees/files" in
   let dr_comms = Filename.concat repo "commits" in
   let dr_trees = Filename.concat repo "trees" in
   let dr_files = Filename.concat repo "files" in

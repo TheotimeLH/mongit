@@ -3,56 +3,28 @@ open Root
 
 (* ===== PRINT TO_BE ===== *)
 let l_to_be = ref []
-let print_to_be repo = (* avec cwd = root *)
-  (* Fonction extraite du code de Commit.mk_todo_list *)
-  let l = ref [] in
-  (* add *)
-  let add_f = fun f -> l := f :: !l in
-  let rec add_d d = Array.iter 
-    (fun df -> 
-      if !include_secret || df.[0] <> '.' 
-      then add_d_or_f (Filename.concat d df)) 
-    (Sys.readdir d)
-  and add_d_or_f df =
-    if Sys.is_directory df then add_d df else add_f df
-  in
-  (* minus *)
-  let minus_f = fun f -> l := Outils.list_rm_fst_occ f !l in
-  let rec minus_d d = Array.iter 
-    (fun df ->
-      if !include_secret || df.[0] <> '.' 
-      then minus_d_or_f (Filename.concat d df)) 
-    (Sys.readdir d)
-  and minus_d_or_f df =
-    if Sys.is_directory df then minus_d df else minus_f df
-  in
-  (* Scan to_be_commited *)
-  let to_be = Filename.concat repo "to_be_commited" in
-  if not (Sys.file_exists to_be)
+
+let print_cr = printf "\t\x1B[32m-create \x1B[97m%s\n"
+let print_rm = printf "\t\x1B[31m-remove \x1B[97m%s\n"
+let print_ch = printf "\t\x1B[33m-modify \x1B[97m%s\n"
+let print_mv = printf "\t\x1B[33m-move   \x1B[97m%s \x1B[33mto \x1B[97m%s\n"
+
+let print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm =
+  if f_to_cr=[] && f_to_ch=[] && f_to_rm=[] && f_to_mv=[]
+  && d_to_cr=[] && d_to_mv=[] && d_to_rm=[]
   then printf "[COMMIT] There are no files waiting for a -commit.\n"
   else begin
-  (* SCAN *)
-  let ic = Scanf.Scanning.open_in to_be in
-  begin try while true do
-    Scanf.bscanf ic "%s %s\n"
-    (fun a df -> 
-      if a="all" then begin
-        Array.iter 
-          (fun sub ->
-           if !include_secret || sub.[0] <> '.' then
-           if df = "add" then add_d_or_f sub else minus_d_or_f sub) 
-          (Sys.readdir ".")
-      end else begin
-      Outils.exists_chk df ;
-      if a="add" then add_d_or_f df else minus_d_or_f df
-      end)
-  done with | End_of_file -> () end ;
-  Scanf.Scanning.close_in ic ;
-  (* PRINT *)
-  l := List.rev !l ;
   printf "[COMMIT] The following files are waiting for a -commit : \n" ;
-  List.iter (printf "\t\t%s\n") !l ;
-  l_to_be := !l
+  let lch = fst (List.split f_to_ch)
+  and lrm = fst (List.split f_to_rm) in
+  let lop,lnp = List.split f_to_mv in
+  List.iter print_cr f_to_cr ;
+  List.iter print_ch lch ;
+  List.iter print_rm lrm ;
+  List.iter2 print_mv lop lnp ;
+  if d_to_cr<>[] || d_to_mv<>[] || d_to_rm<>[]
+  then printf "Some directories will be created,moved or removed.\n" ;
+  l_to_be := f_to_cr @ lch @ lrm @ lop 
   end
 (* ==================== *)
 
@@ -60,14 +32,16 @@ let print_to_be repo = (* avec cwd = root *)
 (* ===== PRINT CHANGED ===== *)
 let print_changed tbl_files =
   if IdMap.is_empty tbl_files
-  then printf "[CHANGES] No file changed.\n"
+  then printf "[CHANGES] Empty branch.\n"
   else begin
     printf 
      "[CHANGES] The following files are different from the version \
       saved and not in the to_be_commited list: \n" ;
     let fct fn stored_key =
-      if (Outils.mksha fn <> stored_key) && not (List.mem fn !l_to_be)
-      then printf "\t\t%s\n" fn in
+      if not (List.mem fn !l_to_be) then 
+      if not (Sys.file_exists fn) then print_rm fn
+      else if (Outils.mksha fn <> stored_key) then print_ch fn
+    in
     IdMap.iter fct tbl_files
   end
 (* ==================== *)
@@ -75,14 +49,13 @@ let print_changed tbl_files =
 
 (* ===== MAIN ===== *)
 let cmd_status () =
-  let repo = Outils.repo_find_chk () in
+  Outils.init () ;
   Root.real_cwd := Unix.getcwd () ;
-  Unix.chdir (Filename.dirname repo) ;
-  (* 1) ceux qui attendent *)
+  Unix.chdir !root ;
+  let f_to_cr,f_to_ch,f_to_rm,f_to_mv,d_to_cr,d_to_mv,d_to_rm,tbl_files
+    = Pre_commit.compile_to_be () in
   print_to_be repo ;
   printf " ================================================= \n" ;
-  (* 2) ceux qui ont changé *)
-  let tbl_files = Outils.load_tbl_files repo in
   print_changed tbl_files ;
   printf " =================================================\n" ;
   Unix.chdir !Root.real_cwd 

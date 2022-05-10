@@ -11,8 +11,7 @@ open Printf
    seul le nom du dossier sera inscrit. *)
 let pre_commit_cmd ope f = (* ope = add | minus | remove*)
   Outils.init () ;
-  let oc = open_out_gen [Open_creat ; Open_append] mkfile_num
-    (Filename.concat !repo "to_be_commited") in
+  let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
   let rf = Outils.rootpath f in
   if rf = "" (* root *)
   then fprintf oc "all _ %s\n" ope
@@ -22,8 +21,7 @@ let pre_commit_cmd ope f = (* ope = add | minus | remove*)
 let cmd_move = function
   | [oldpath;newpath] ->
     Outils.init () ;
-    let oc = open_out_gen [Open_creat ; Open_append] mkfile_num
-      (Filename.concat !repo "to_be_commited") in
+    let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
     let r_old = Outils.rootpath oldpath
     and r_new = Outils.rootpath newpath in
     if r_old="" || r_new="" then
@@ -53,8 +51,6 @@ let cmd_move = function
      Pour le commit (~ fait la todo_list)
 *)
 let compile_to_be () = (* cwd = root *)
-  let to_be    = Filename.concat !repo "to_be_commited" in
-  let dr_trees = Filename.concat !repo "trees" in
   let f_to_rm = ref []    and f_to_mv = ref [] 
   and f_to_cr = ref []    and f_to_ch = ref []
   and d_to_cr = ref []    and d_to_rm = ref []
@@ -92,7 +88,10 @@ let compile_to_be () = (* cwd = root *)
 
 
   (* == REMOVE == *)
-  let remove_f f = (f_to_rm := f :: !f_to_rm) in
+  let remove_f f = 
+    try let key = find_key_f in f_to_rm := (f,key) :: !f_to_rm
+    with | Not_in_the_tree -> ()
+  in
   let remove_d d =
     begin try ignore (find_key_d d) ; d_to_rm := d :: !d_to_rm
     with | Not_in_the_tree -> () end ;
@@ -126,7 +125,7 @@ let compile_to_be () = (* cwd = root *)
   in
   
   (* ==== SCAN ==== *)
-  let ic = Scanf.Scanning.open_in to_be in
+  let ic = Scanf.Scanning.open_in !to_be in
   begin try while true do
     Scanf.bscanf ic "%s %s %s\n"
     (
@@ -150,9 +149,7 @@ let compile_to_be () = (* cwd = root *)
       | Some key -> f_to_ch := (f,key) :: !f_to_ch
     ) !l_add_f ;
 
-  !f_to_cr,!f_to_ch,!f_to_rm,!f_to_mv,!d_to_cr,!d_to_ch,!d_to_rm,tbl_files
+  !f_to_cr,!f_to_ch,!f_to_rm,!f_to_mv,!d_to_cr,!d_to_mv,!d_to_rm,tbl_files
 (* ================ *)
-
-
 
 

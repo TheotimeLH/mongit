@@ -17,3 +17,10 @@ let mkdir_num = 0o775
 let mkfile_num = 0o664
 
 let real_cwd = ref "" 
+let repo = ref ""
+let root = ref ""
+let branch = ref ""
+let to_be = ref ""
+let dr_trees = ref ""
+let dr_comms = ref ""
+let dr_files = ref ""

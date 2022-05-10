@@ -12,18 +12,21 @@ let init () =
     [".mongit" ;
      ".mongit/files" ;
      ".mongit/commits" ;
-     ".mongit/trees" ] ;
+     ".mongit/trees" ;
+     ".mongit/branches"] ;
 
+  Outils.str_file ".mongit/branches/HEAD" "Initial\n" ;
+  Outils.str_file ".mongit/branches/Initial" "last commit : none\n" ;
+  Outils.empty_file ".mongit/to_be_commited" ;
   Outils.empty_file 
-    ("" (* rootpath of root *)
+    ("Initial:" (* rootpath of root + on the initial branch*)
     |> Outils.sha_name 
-    |> (Filename.concat ".mongit/trees")) ;
-  Outils.empty_file ".mongit/trees/files"
+    |> (Filename.concat ".mongit/trees"))
 (* ================ *)
 
 
 (* ===== REMOVE ===== *)
-let remove () =
+let remove_repo () =
   print_debug "Try to remove the repo : \n" ;
   if not (Sys.file_exists "./.mongit") then
    (eprintf "Error : there is no repo right here.\n\
@@ -50,18 +53,18 @@ let update () =
 
 (* ===== HASH-FILE ===== *)
 let hash_file f =
-  let repo = Outils.repo_find_chk () in
+  Outils.init () ;
   Outils.exists_chk f ;
-  Outils.store f (Filename.concat repo "files")
+  Outils.store f !dr_files
 (* ================ *)
 
 
 (* ===== CAT ===== *) 
 let cat_file str_h =
-  let dir = Filename.concat (Outils.repo_find_chk ()) "files" in
-  Outils.load str_h dir stdout
+  Outils.init () ;
+  Outils.load str_h !dr_files stdout
 
 let cat_commit str_h =
-  let dir = Filename.concat (Outils.repo_find_chk ()) "commits" in
-  Outils.load str_h dir stdout
+  Outils.init () ;
+  Outils.load str_h !dr_comms stdout
 (* ================ *)
