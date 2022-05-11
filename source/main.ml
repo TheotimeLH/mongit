@@ -14,7 +14,7 @@ let () = speclist :=
   [("-debug", 
       Set Root.bool_print_debug , 
       "Print debug messages");
-   ("-debug", 
+   ("-detail", 
       Set Root.bool_print_detail , 
       "Detail more what has been done");
    ("-include_secret", 
@@ -39,22 +39,25 @@ let () = speclist :=
       String Basic_cmds.cat_commit ,
       "< mg -cat_file \"sha_key\" > will print out the file .mongit/commits/sha_key");
    ("-add",
-      Rest (Files_manip.pre_commit_cmd "add"),
+      Rest (Pre_commit.pre_commit_cmd "add"),
       "< mg -add \"filename\" > set the file/directory as to be saved on the next commit");
    ("-minus",
-      Rest (Files_manip.pre_commit_cmd "minus"),
+      Rest (Pre_commit.pre_commit_cmd "minus"),
       "< mg -minus \"filename\" > remove the file/dir from the list of files to be commited. \n\
        Can be used to undo a -add, or to be more precise. \n\
        For instance you can -add a whole directory and then -minus just one file the dir contains.");
    ("-remove",
-      Rest (Files_manip.pre_commit_cmd "remove"),
+      Rest (Pre_commit.pre_commit_cmd "remove"),
       "Remove the file/dir from the current copy branch.");
    ("-move",
-      Rest_all Files_manip.cmd_move,
+      Rest_all Pre_commit.cmd_move,
       "Move the file/dir both in the real working directory and in the current copy branch.");
    ("-commit",
       Unit subparser_commit,
       "Save the modifications in the repo.");
+   ("-reset_commit",
+      Unit Basic_cmds.cmd_reset_commit,
+      "Empty file to_be_commited.");
    ("-ls",
       Unit Tree.cmd_ls , 
       "Create a \"repo_tree.pdf\" file (using Graphviz's dot command).");
@@ -62,8 +65,11 @@ let () = speclist :=
       Unit Status.cmd_status , 
       "Show the status of the copy.");
    ("-restore",
-      String Files_manip.cmd_restore ,
+      String Restore.cmd_restore ,
       "Restore the file requested (or the whole directory).");
+   ("-not_real", 
+      Set Root.not_real , 
+      "Limits remove and move commands so that they only affect the repo");
    ]
 
 

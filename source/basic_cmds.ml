@@ -68,3 +68,9 @@ let cat_commit str_h =
   Outils.init () ;
   Outils.load str_h !dr_comms stdout
 (* ================ *)
+
+(* ===== RESET COMMIT ===== *)
+let cmd_reset_commit () =
+  Outils.init () ;
+  Outils.empty_file !to_be
+(* ================ *)

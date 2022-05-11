@@ -3,6 +3,7 @@ open Printf
 let bool_print_debug = ref false
 let bool_print_detail = ref false
 let include_secret = ref false
+let not_real = ref false
 
 let print_debug str =
   if !bool_print_debug then fprintf stdout str

@@ -9,7 +9,7 @@ let cmd_restore df = (* dir or file *)
   Unix.chdir !root ;
   (* On liste d'abord tous les fichiers à changer. *)
   let l_files = 
-    try Tree.enumerate_d_or_f !dr_trees rpath
+    try Tree.enumerate_d_or_f rpath
     with | Not_in_the_tree ->
       eprintf "\"%s\" hasn't been found in the actual branch.\n" df ;
       exit 1 
@@ -31,7 +31,7 @@ let cmd_restore df = (* dir or file *)
       let fct (fn,key) =
         Outils.create_dir (Filename.dirname fn) ;
         let oc = open_out fn in
-        Outils.load key dr_files oc ;
+        Outils.load key !dr_files oc ;
         close_out oc
       in
       List.iter fct l_to_restore ;

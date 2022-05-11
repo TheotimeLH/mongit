@@ -14,32 +14,39 @@ let nb_lines_del = ref 0
 (* ===== Fonctions effectives, qui add/remove/modifie/mv etc ===== *)
 (* Simple :) *)
 let real_d_cr commit_ch d =
-  Tree.add_dir d ;
+  print_detail "Create dir : %s\n" d ;
+  Tree.add_d d ;
   fprintf commit_ch "CREATE DIR %s\n" d
 
 let real_f_cr commit_ch f =
+  print_detail "Create file : %s\n" f ;
   Outils.store f !dr_files ;
   nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;
   let key = Outils.mksha f in
-  Tree.add_file f key ;
+  Tree.add_f f key ;
   fprintf commit_ch "CREATE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 
 let start_d_mv commit_ch (op,np) = (*oldpath newpath*)
+  print_detail "Move dir : %s to %s\n" op np ;
   Outils.create_dir np ;
-  Tree.add_dir np ;
+  Tree.add_d np ;
   fprintf commit_ch "MOVE DIR %s %s\n" op np
 
 let start_f_mv commit_ch ((op,key),np) =
-  Sys.command (sprintf "cp %s %s" op np) ;
-  Tree.add_file np key ;
+  print_detail "Move file : %s to %s\n" op np ;
+  let ret = Sys.command (sprintf "cp %s %s" op np) in
+  if ret<>0 then (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1) ;
+  Tree.add_f np key ;
   fprintf commit_ch "MOVE FILE %s %s %s\n" op np key ;
   printf "*" ; flush stdout
 
 let start_d_rm commit_ch d =
+  print_detail "Remove dir : %s\n" d ;
   fprintf commit_ch "REMOVE DIR %s\n" d
 
 let start_f_rm commit_ch (f,key) =
+  print_detail "Remove file : %s\n" f ;
   nb_lines_del := !nb_lines_del + (Array.length (Outils.readlines f)) ;
   fprintf commit_ch "REMOVE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
@@ -48,16 +55,17 @@ let final_f_ch key = Outils.remove_hash !dr_files key
 let final_d_mv (op,_)     = Tree.remove_d op ;  Outils.remove op
 let final_f_mv ((op,_),_) = Tree.remove_f op ;  Outils.remove op
 let final_d_rm d          = Tree.remove_d d  ;  Outils.remove d
-let final_f_rm f          = Tree.remove_f f  ;  Outils.remove f
+let final_f_rm (f,_)      = Tree.remove_f f  ;  Outils.remove f
 
 
 (* Compliqué : la fonction de modif, car on sauvegarde les différences *)
 
 let real_f_ch commit_ch (f,old_key) =
+  print_detail "Change file : %s\n" f ;
   let new_key = Outils.mksha f in
   if old_key <> new_key then begin
   (* Store la nouvelle version *)
-    Outils.store f dr_files ;
+    Outils.store f !dr_files ;
     Tree.remove_f f ;
     Tree.add_f f new_key ;
   (* Charger l'ancienne, via un fichier où la décompresser *)
@@ -123,8 +131,8 @@ let real_f_ch commit_ch (f,old_key) =
 let cmd_commit () =
   Outils.init () ;
   Root.real_cwd := Unix.getcwd () ;
-  Unix.chdir (Filename.dirname repo) ;
-  let f_to_cr,f_to_ch,f_to_rm,f_to_mv,d_to_cr,d_to_mv,d_to_rm,tbl_files
+  Unix.chdir (Filename.dirname !repo) ;
+  let f_to_cr,f_to_ch,f_to_rm,f_to_mv,d_to_cr,d_to_mv,d_to_rm,_
     = Pre_commit.compile_to_be () in
   let nb_f_cr = List.length f_to_cr
   and nb_f_ch = List.length f_to_ch
@@ -142,7 +150,7 @@ let cmd_commit () =
     (* Idée : On écrit et on enregistre toutes les modifications avant
        de faire quoique ce soit d'irréversible. Donc on "register" dans le
        commit qu'on va suppr, avant de le faire effectivement par exemple. *)
-    let tmp_file = Filename.concat dr_comms "tmp_commit_file" in
+    let tmp_file = Filename.concat !dr_comms "tmp_commit_file" in
     let commit_ch = open_out tmp_file in
 
     let pcommit = Outils.find_commit () in
@@ -161,7 +169,7 @@ let cmd_commit () =
 
     close_out commit_ch ;
     Outils.store tmp_file !dr_comms ;
-    let oc = open_out (Filename.concat !dr_brnch !brnch) in
+    let oc = open_out (Filename.concat !dr_brnch !branch) in
     fprintf oc "last commit : %s\n" (Outils.mksha tmp_file) ;
     close_out oc ;
 
@@ -175,10 +183,11 @@ let cmd_commit () =
     printf 
     "\nDone. created : %d ; rebuilt : %d ; slightly modified : %d ; \
       unchanged : %d ; removed : %d ; moved : %d\n"
-      nb_f_cr !nb_rebuilt !nb_minor !nb_nothing nb_f_rm nb_f_mv
+      nb_f_cr !nb_rebuilt !nb_minor !nb_nothing nb_f_rm nb_f_mv ;
     printf "Total : %d insertions(+), %d deletions(-)\n"
-      !nb_lines_del !nb_lines_add ;
+      !nb_lines_add !nb_lines_del ;
   end ;
+  Outils.empty_file !to_be ;
   Unix.chdir !Root.real_cwd 
 (* ================ *)
 

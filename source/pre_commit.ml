@@ -11,6 +11,7 @@ open Printf
    seul le nom du dossier sera inscrit. *)
 let pre_commit_cmd ope f = (* ope = add | minus | remove*)
   Outils.init () ;
+  if not !not_real || ope<>"remove" then Outils.exists_chk f ;
   let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
   let rf = Outils.rootpath f in
   if rf = "" (* root *)
@@ -21,6 +22,7 @@ let pre_commit_cmd ope f = (* ope = add | minus | remove*)
 let cmd_move = function
   | [oldpath;newpath] ->
     Outils.init () ;
+  if not !not_real then Outils.exists_chk oldpath ;
     let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
     let r_old = Outils.rootpath oldpath
     and r_new = Outils.rootpath newpath in
@@ -28,7 +30,7 @@ let cmd_move = function
     ( eprintf "You can't move the whole directory like that.\n" ;
       exit 1 )
     else if r_old <> r_new then fprintf oc "move %s %s" r_old r_new ;
-    close_out_oc
+    close_out oc
   | _ -> 
       eprintf "To move a file/dir with mg you must use :\
         \"mg -move <old-path> <new-path>\"\n" ;
@@ -60,11 +62,11 @@ let compile_to_be () = (* cwd = root *)
 
   (* ==== FONCTIONS AUXILIAIRES : ==== *)
   (* usefull *)
-  let fct_on_d d fct =
+  let fct_on_d d dr fct = (* dr = d but rootpath*)
     Array.iter
     (fun sub -> 
       if !include_secret || sub.[0] <> '.' 
-      then fct (Filename.concat d sub))
+      then fct (Filename.concat dr sub))
     (Sys.readdir d)
   in
   (* == ADD/MINUS == *)
@@ -72,12 +74,12 @@ let compile_to_be () = (* cwd = root *)
     if b then l_add_f := f :: !l_add_f (*add*)
     else l_add_f := Outils.list_rm_fst_occ f !l_add_f (*minus*)
   in
-  let add_d b d = 
+  let rec add_d b d = 
     if b then (*add*)
-      begin try ignore (find_key_d d)
+      begin try ignore (Tree.find_key_d d)
       with | Not_in_the_tree -> d_to_cr := d :: !d_to_cr end
     else d_to_cr := Outils.list_rm_fst_occ d !d_to_cr ; (*minus*)
-    fct_on_d d (add_d_or_f b)
+    fct_on_d d d (add_d_or_f b)
   and add_d_or_f b df =
     if Sys.is_directory df then add_d b df else add_f b df
   in
@@ -89,13 +91,13 @@ let compile_to_be () = (* cwd = root *)
 
   (* == REMOVE == *)
   let remove_f f = 
-    try ignore (find_key_f) ; f_to_rm := f :: !f_to_rm
+    try let key = Tree.find_key_f f in f_to_rm := (f,key) :: !f_to_rm
     with | Not_in_the_tree -> ()
   in
-  let remove_d d =
-    begin try ignore (find_key_d d) ; d_to_rm := d :: !d_to_rm
+  let rec remove_d d =
+    begin try ignore (Tree.find_key_d d) ; d_to_rm := d :: !d_to_rm
     with | Not_in_the_tree -> () end ;
-    fct_on_d d remove_d_or_f
+    fct_on_d d d remove_d_or_f
   and remove_d_or_f df =
     if Sys.is_directory df then remove_d df else remove_f df
   in
@@ -106,10 +108,10 @@ let compile_to_be () = (* cwd = root *)
 
   (* == MOVE == *) (* op : oldpath ; np : newpath *)
   let move_f op np = 
-    try let key = find_key op in f_to_mv := ((op,key),np) :: !f_to_mv
+    try let key = Tree.find_key_f op in f_to_mv := ((op,key),np) :: !f_to_mv
     with | Not_in_the_tree -> ()
   in
-  let move_d op np = 
+  let rec move_d op np = 
     d_to_mv := (op,np) :: !d_to_mv ;
     Array.iter
     (fun sub -> 
@@ -137,9 +139,10 @@ let compile_to_be () = (* cwd = root *)
       | "all","add"    | "add",_    -> add true
       | "all","minus"  | "minus",_  -> add false
       | "all","remove" | "remove",_ -> remove
-      | "move",_ -> move_d_or_f df
+      | "move",_ -> move df
+      | _,_ -> failwith "external modif of to_be_commited file maked it unreadable\n"
       in
-      if a="all" then fct_on_d "." fct_to_use
+      if a="all" then fct_on_d "." "" fct_to_use
       else fct_to_use df2
     )
   done with | End_of_file -> () end ;

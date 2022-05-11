@@ -16,15 +16,16 @@ let print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm =
   else begin
   printf "[COMMIT] The following files are waiting for a -commit : \n" ;
   let lch = fst (List.split f_to_ch) in
+  let lrm = fst (List.split f_to_rm) in
   let lopk,lnp = List.split f_to_mv in
   let lop = fst (List.split lopk) in
   List.iter print_cr f_to_cr ;
-  List.iter print_rm f_to_rm ;
+  List.iter print_rm lrm ;
   List.iter print_ch lch ;
   List.iter2 print_mv lop lnp ;
   if d_to_cr<>[] || d_to_mv<>[] || d_to_rm<>[]
   then printf "Some directories will be created, moved or removed.\n" ;
-  l_to_be := f_to_cr @ f_to_rm @ lch @ lop 
+  l_to_be := f_to_cr @ lrm @ lch @ lop 
   end
 (* ==================== *)
 
@@ -54,7 +55,7 @@ let cmd_status () =
   Unix.chdir !root ;
   let f_to_cr,f_to_ch,f_to_rm,f_to_mv,d_to_cr,d_to_mv,d_to_rm,tbl_files
     = Pre_commit.compile_to_be () in
-  print_to_be repo ;
+  print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm ;
   printf " ================================================= \n" ;
   print_changed tbl_files ;
   printf " =================================================\n" ;

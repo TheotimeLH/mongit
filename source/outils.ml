@@ -6,11 +6,12 @@ let fn_concat_list l =
   List.fold_left Filename.concat (List.hd l) (List.tl l)
 
 let empty_file f =
-  let oc = open_out_gen [Open_creat] mkfile_num f in
+  let oc = open_out f in
   close_out oc
 
 let init_file f s =
-  let oc = open_out_gen [Open_creat] mkfile_num f in
+  print_debug "try to init : %s with %s \n" f s ;
+  let oc = open_out f in
   output_string oc s ;
   close_out oc
 
@@ -34,6 +35,29 @@ let str_list l =
 let np s = if s="." then "" else s
 (* ================== *)
 
+
+(* ===== SAFE REAL PATH ===== *)
+let safe_realpath path =
+  let cwd = Unix.getcwd () in
+  let s = Filename.concat cwd path in
+  let b = Buffer.create 1024 in
+  let l_path = ref [] in
+  let fct () =
+    let sb = Buffer.contents b in
+    Buffer.reset b ;
+    if sb="." || sb="" then ()
+    else if sb=".." then 
+      begin l_path := match !l_path with [] -> [] | _::q -> q end
+    else l_path := sb :: !l_path
+  in
+
+  for i = 0 to String.length s - 1 do
+    if s.[i]='/' then fct ()
+    else Buffer.add_char b s.[i]
+  done ;
+  fct () ;
+  List.fold_right (fun f d -> Filename.concat d f) !l_path "/"
+(* ================== *)
 
 (* ===== REMOVE / CREATE ===== *)
 let rec remove path = 
@@ -67,7 +91,7 @@ let repo_find_with_path path =
       if p = parent then raise No_repo
       else aux parent
   in
-  aux (Unix.realpath path)
+  aux (safe_realpath path)
 
 let repo_find () = repo_find_with_path "."
 (* ================== *)
@@ -90,15 +114,14 @@ let exists_chk f =
 (* ==== ROOT PATH ==== *)
 let rootpath f =
   exists_chk f ;
-  let full = Unix.realpath f in
-  let root = Filename.dirname !repo in
-  if not (String.starts_with ~prefix:root full) then
+  let full = safe_realpath f in
+  if not (String.starts_with ~prefix:!root full) then
   ( eprintf "Error : the path \"%s\" leads out of the repo\n" f ;
     exit 1)
-  else if full=root then ""
+ else if full = !root then ""
   else (
     let lf = String.length full in
-    let lr = String.length root in
+    let lr = String.length !root in
     String.sub full (lr+1) (lf-lr-1)
   )
   

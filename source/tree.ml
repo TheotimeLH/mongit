@@ -2,18 +2,18 @@ open Printf
 open Root
 
 (* ===== ADD ===== *)
-let rec add_file f key = 
+let rec add_f f key = 
   (* /!\ non déjà présent et en rootpath !*)
   let dir = Filename.dirname f |> Outils.np in
   let fnd = Outils.with_branch dir in
   let hdir = Filename.concat !dr_trees (Outils.sha_name fnd) in 
-  if not (Sys.file_exists hdir) then add_dir dir ;
+  if not (Sys.file_exists hdir) then add_d dir ;
   let oc_dir = open_out_gen [Open_append] 0 hdir in
   output_string oc_dir 
     (sprintf "file %s %s\n" (Filename.basename f) key) ;
   close_out oc_dir
 
-and add_dir d =
+and add_d d =
   let fnd = Outils.with_branch d in
   let key = Outils.sha_name fnd in
   let hf = Filename.concat !dr_trees key in
@@ -21,10 +21,10 @@ and add_dir d =
   let parent = Filename.dirname d |> Outils.np in
   let fndp = Outils.with_branch parent in 
   let hparent = Filename.concat !dr_trees (Outils.sha_name fndp) in
-  if not (Sys.file_exists hparent) then add_dir parent ;
+  if not (Sys.file_exists hparent) then add_d parent ;
   let oc_par = open_out_gen [Open_append] 0 hparent in
   output_string oc_par 
-    (sprintf "dir %s %s\n" (Filename.basename dir) key) ;
+    (sprintf "dir %s %s\n" (Filename.basename d) key) ;
   close_out oc_par ;
   Outils.empty_file hf
   end
@@ -136,11 +136,11 @@ let remove_f df =
       (fun s -> Scanf.sscanf s "%s %s %s" 
       (fun _ fn _ -> if fn<>df then output_string oc (s^"\n")))
       al ;
-    close_out hdir
+    close_out oc
   end
 
 let rec erase key =
-  let f = Filename.concat !dr_trees key in
+  let hf = Filename.concat !dr_trees key in
   let l_rm_next = ref [] in
   if Sys.file_exists hf then begin
     let al = Outils.readlines hf in
