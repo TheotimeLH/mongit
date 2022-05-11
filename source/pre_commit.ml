@@ -27,7 +27,7 @@ let cmd_move = function
     if r_old="" || r_new="" then
     ( eprintf "You can't move the whole directory like that.\n" ;
       exit 1 )
-    else fprintf oc "move %s %s" r_old r_new ;
+    else if r_old <> r_new then fprintf oc "move %s %s" r_old r_new ;
     close_out_oc
   | _ -> 
       eprintf "To move a file/dir with mg you must use :\
@@ -89,7 +89,7 @@ let compile_to_be () = (* cwd = root *)
 
   (* == REMOVE == *)
   let remove_f f = 
-    try let key = find_key_f in f_to_rm := (f,key) :: !f_to_rm
+    try ignore (find_key_f) ; f_to_rm := f :: !f_to_rm
     with | Not_in_the_tree -> ()
   in
   let remove_d d =
@@ -105,7 +105,10 @@ let compile_to_be () = (* cwd = root *)
 
 
   (* == MOVE == *) (* op : oldpath ; np : newpath *)
-  let move_f op np = (f_to_mv := (op,np) :: !f_to_mv) in
+  let move_f op np = 
+    try let key = find_key op in f_to_mv := ((op,key),np) :: !f_to_mv
+    with | Not_in_the_tree -> ()
+  in
   let move_d op np = 
     d_to_mv := (op,np) :: !d_to_mv ;
     Array.iter

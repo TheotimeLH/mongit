@@ -12,19 +12,19 @@ let print_mv = printf "\t\x1B[33m-move   \x1B[97m%s \x1B[33mto \x1B[97m%s\n"
 let print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm =
   if f_to_cr=[] && f_to_ch=[] && f_to_rm=[] && f_to_mv=[]
   && d_to_cr=[] && d_to_mv=[] && d_to_rm=[]
-  then printf "[COMMIT] There are no files waiting for a -commit.\n"
+  then printf "[COMMIT] There are nothing waiting for a -commit.\n"
   else begin
   printf "[COMMIT] The following files are waiting for a -commit : \n" ;
-  let lch = fst (List.split f_to_ch)
-  and lrm = fst (List.split f_to_rm) in
-  let lop,lnp = List.split f_to_mv in
+  let lch = fst (List.split f_to_ch) in
+  let lopk,lnp = List.split f_to_mv in
+  let lop = fst (List.split lopk) in
   List.iter print_cr f_to_cr ;
+  List.iter print_rm f_to_rm ;
   List.iter print_ch lch ;
-  List.iter print_rm lrm ;
   List.iter2 print_mv lop lnp ;
   if d_to_cr<>[] || d_to_mv<>[] || d_to_rm<>[]
-  then printf "Some directories will be created,moved or removed.\n" ;
-  l_to_be := f_to_cr @ lch @ lrm @ lop 
+  then printf "Some directories will be created, moved or removed.\n" ;
+  l_to_be := f_to_cr @ f_to_rm @ lch @ lop 
   end
 (* ==================== *)
 

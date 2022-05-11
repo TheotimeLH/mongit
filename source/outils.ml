@@ -9,7 +9,7 @@ let empty_file f =
   let oc = open_out_gen [Open_creat] mkfile_num f in
   close_out oc
 
-let str_file f s =
+let init_file f s =
   let oc = open_out_gen [Open_creat] mkfile_num f in
   output_string oc s ;
   close_out oc
@@ -106,7 +106,7 @@ let root_to_realpath f =
   Filename.concat !Root.root f
 (* ================== *)
 
-(* ===== FIND BRANCH ===== *)
+(* ===== BRANCH ===== *)
 let find_branch () =
   let f = Filename.concat !repo "branches/HEAD" in
   let ic = open_in f in
@@ -115,6 +115,12 @@ let find_branch () =
 
 let with_branch s =
   sprintf "%s:%s" !branch s
+
+let find_commit () =
+  let f = Filename.concat !dr_brnch !branch in
+  let ic = open_in f in
+  Scanf.sscanf (input_line ic) "last commit : %s" 
+  (fun s -> close_in ic ; s)
 (* ================== *)
 
 
@@ -125,8 +131,9 @@ let init () =
   Root.dr_trees := Filename.concat !repo "trees" ;
   Root.dr_comms := Filename.concat !repo "commits" ;
   Root.dr_files := Filename.concat !repo "files" ;
+  Root.dr_brnch := Filename.concat !repo "branches" ;
   Root.to_be    := Filename.concat !repo "to_be_commited" ;
-  Root.branch   := find_branch ()
+  find_branch ()
 (* ================== *)
 
 
@@ -135,6 +142,7 @@ let sha_name nm =
   Sha1.(to_hex (string nm))
 
 let mksha f =
+  exists_chk f ;
   let ic = open_in f in
   let str_h = Sha1.(to_hex (channel ic (-1))) in
   close_in ic ;

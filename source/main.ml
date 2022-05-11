@@ -14,6 +14,9 @@ let () = speclist :=
   [("-debug", 
       Set Root.bool_print_debug , 
       "Print debug messages");
+   ("-debug", 
+      Set Root.bool_print_detail , 
+      "Detail more what has been done");
    ("-include_secret", 
       Set Root.include_secret , 
       "Enables operations over secret files");
