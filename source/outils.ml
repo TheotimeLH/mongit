@@ -33,6 +33,11 @@ let str_list l =
   |> (String.concat " ")
 
 let np s = if s="." then "" else s
+
+(* complètement naif, mais marche pour 'a list *)
+let rec list_uniq = function 
+  | [] -> []
+  | h :: q -> if List.mem h q then list_uniq q else h :: list_uniq q
 (* ================== *)
 
 
@@ -102,18 +107,17 @@ let repo_find_chk () =
   try repo_find ()
   with | No_repo ->
     eprintf "Error : no repo found (cwd : \"%s\")\n" (Unix.getcwd ()) ;
-    exit 1
+    raise Mg_error
     
 let exists_chk f =
   if not (Sys.file_exists f) then
   ( eprintf "Error : the path \"%s\" did not match any file\n" f ;
-    exit 1 )
+    raise Mg_error )
 (* ================== *)
 
 
 (* ==== ROOT PATH ==== *)
 let rootpath f =
-  exists_chk f ;
   let full = safe_realpath f in
   if not (String.starts_with ~prefix:!root full) then
   ( eprintf "Error : the path \"%s\" leads out of the repo\n" f ;

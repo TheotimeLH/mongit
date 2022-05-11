@@ -38,6 +38,7 @@ let cmd_ls () =
   fprintf oc "digraph repo_tree_branch_%s{\n" !branch;
   let num_max = ref 0 in
   let rec read name key num =
+    print_debug "Read tree %s cle %s \n" name key ;
     fprintf oc "%d [label=\"/%s\"];\n" num name ;
     let f = Filename.concat !dr_trees key in
     Outils.exists_chk f ;
@@ -68,31 +69,35 @@ let cmd_ls () =
 (* ===== FIND KEY  ===== *)
 let find_key_d d = (* en rootpath *)
   let key = Outils.sha_name (Outils.with_branch d) in
-  let t = Filename.concat !dr_trees key in
-  if not (Sys.file_exists t) then raise Not_in_the_tree
+  let dt = Filename.concat !dr_trees key in
+  if not (Sys.file_exists dt) then raise Not_in_the_tree
   else key
 
-let find_key_f f =
-  let d = Filename.dirname f in
-  let dkey = find_key_d d in
-  print_debug "a trouvé le dossier %s\n" dkey;
+let find_key_df df = 
+(* À utiliser pour un file ou quand on ne sait pas.
+   Cherche dans le tree parent, et ainsi on peut savoir
+   si un df suppr était un dossier ou un file. *)
+  let dir = Filename.dirname df |> Outils.np in
+  let dkey = find_key_d dir in
   let tree = Filename.concat !dr_trees dkey in
-  let bn = Filename.basename f in
+  let bn = Filename.basename df in
   let ic = Scanf.Scanning.open_in tree in
   let rec read () =
     Scanf.bscanf ic "%s %s %s\n"
     (fun t s nk ->
-      if t="file" && s=bn then (Scanf.Scanning.close_in ic ; nk)
+      if s=bn then 
+      ( Scanf.Scanning.close_in ic ; (t="file" , nk))
       else read ())
   in
   try read ()
   with | End_of_file -> 
     Scanf.Scanning.close_in ic ; raise Not_in_the_tree
+
 (* ================ *)
 
 
 (* ===== ENUMERATE ===== *)
-let enumerate d =
+let enumerate d key =
   let l = ref [] in
   let rec read dir key =
     let tree = Filename.concat !dr_trees key in
@@ -106,38 +111,44 @@ let enumerate d =
         then l := (Filename.concat dir s,nk) :: !l)
     done with | End_of_file -> () end ;
   in
-  read d (find_key_d d) ;
+  read d key ;
   !l
 
-let enumerate_d_or_f df = (* df exists *)
+let enumerate_unk df =
   print_debug "enumerate df = %s\n" df ;
-  if df="" || Sys.is_directory df
-  then enumerate df
-  else [(df,find_key_f df)]
+  if df="" then enumerate "" (find_key_d "")
+  else 
+    let is_f,key = find_key_df df in
+    if is_f then [(df,key)]
+    else enumerate df key
 
 let load_tbl_files () =
   List.fold_left
     (fun tbl (f,key) -> IdMap.add f key tbl)
     IdMap.empty
-    (enumerate "")
+    (enumerate "" (find_key_d ""))
 (* ================ *)
 
 
 (* ===== REMOVE ===== *)
 let remove_f df =
+  print_debug "Try to remove : %s from the tree\n" df ;
   let dir = Filename.dirname df |> Outils.np in
   let fnd = Outils.with_branch dir in
   let hdir = Filename.concat !dr_trees (Outils.sha_name fnd) in 
+  let bn = Filename.basename df in
   if Sys.file_exists hdir then begin
   (* Je n'ai pas trouvé mieux que de réécrire tout le fichier *)
     let al = Outils.readlines hdir in
     let oc = open_out hdir in
     Array.iter 
       (fun s -> Scanf.sscanf s "%s %s %s" 
-      (fun _ fn _ -> if fn<>df then output_string oc (s^"\n")))
+      (fun _ fn _ -> if fn<>bn then output_string oc (s^"\n")))
       al ;
     close_out oc
-  end
+  end ;
+  try ignore (find_key_df df) ; print_debug "QUOIIII on a trouvé : %s \n" df
+  with | Not_in_the_tree -> ()
 
 let rec erase key =
   let hf = Filename.concat !dr_trees key in

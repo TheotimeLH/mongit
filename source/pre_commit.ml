@@ -11,7 +11,7 @@ open Printf
    seul le nom du dossier sera inscrit. *)
 let pre_commit_cmd ope f = (* ope = add | minus | remove*)
   Outils.init () ;
-  if not !not_real || ope<>"remove" then Outils.exists_chk f ;
+  if ope<>"remove" then Outils.exists_chk f ;
   let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
   let rf = Outils.rootpath f in
   if rf = "" (* root *)
@@ -22,14 +22,16 @@ let pre_commit_cmd ope f = (* ope = add | minus | remove*)
 let cmd_move = function
   | [oldpath;newpath] ->
     Outils.init () ;
-  if not !not_real then Outils.exists_chk oldpath ;
+    if not !not_real then Outils.exists_chk oldpath ;
     let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
+    print_debug "avant les rootpath" ;
     let r_old = Outils.rootpath oldpath
     and r_new = Outils.rootpath newpath in
+    print_debug "a passe les rootpath" ;
     if r_old="" || r_new="" then
     ( eprintf "You can't move the whole directory like that.\n" ;
       exit 1 )
-    else if r_old <> r_new then fprintf oc "move %s %s" r_old r_new ;
+    else if r_old <> r_new then fprintf oc "move %s %s\n" r_old r_new ;
     close_out oc
   | _ -> 
       eprintf "To move a file/dir with mg you must use :\
@@ -53,6 +55,7 @@ let cmd_move = function
      Pour le commit (~ fait la todo_list)
 *)
 let compile_to_be () = (* cwd = root *)
+  print_debug "demande à lire to_be\n" ;
   let f_to_rm = ref []    and f_to_mv = ref [] 
   and f_to_cr = ref []    and f_to_ch = ref []
   and d_to_cr = ref []    and d_to_rm = ref []
@@ -79,7 +82,7 @@ let compile_to_be () = (* cwd = root *)
       begin try ignore (Tree.find_key_d d)
       with | Not_in_the_tree -> d_to_cr := d :: !d_to_cr end
     else d_to_cr := Outils.list_rm_fst_occ d !d_to_cr ; (*minus*)
-    fct_on_d d d (add_d_or_f b)
+    fct_on_d d d (add_d_or_f b) 
   and add_d_or_f b df =
     if Sys.is_directory df then add_d b df else add_f b df
   in
@@ -91,7 +94,7 @@ let compile_to_be () = (* cwd = root *)
 
   (* == REMOVE == *)
   let remove_f f = 
-    try let key = Tree.find_key_f f in f_to_rm := (f,key) :: !f_to_rm
+    try let _,key = Tree.find_key_df f in f_to_rm := (f,key) :: !f_to_rm
     with | Not_in_the_tree -> ()
   in
   let rec remove_d d =
@@ -99,16 +102,19 @@ let compile_to_be () = (* cwd = root *)
     with | Not_in_the_tree -> () end ;
     fct_on_d d d remove_d_or_f
   and remove_d_or_f df =
-    if Sys.is_directory df then remove_d df else remove_f df
-  in
-  let remove df =
-    if Sys.file_exists df then remove_d_or_f df
+    if Sys.file_exists df
+    then (if Sys.is_directory df then remove_d df else remove_f df)
+    else 
+    try let is_f,key = Tree.find_key_df df in
+        if is_f then f_to_rm := (df,key) :: !f_to_rm
+        else remove_d df
+    with | Not_in_the_tree -> () 
   in
 
 
   (* == MOVE == *) (* op : oldpath ; np : newpath *)
   let move_f op np = 
-    try let key = Tree.find_key_f op in f_to_mv := ((op,key),np) :: !f_to_mv
+    try let _,key = Tree.find_key_df op in f_to_mv := ((op,key),np) :: !f_to_mv
     with | Not_in_the_tree -> ()
   in
   let rec move_d op np = 
@@ -135,10 +141,11 @@ let compile_to_be () = (* cwd = root *)
     Scanf.bscanf ic "%s %s %s\n"
     (
     fun a df df2 -> 
+      print_debug "parse qlqch\n" ;
       let fct_to_use = match a,df2 with
       | "all","add"    | "add",_    -> add true
       | "all","minus"  | "minus",_  -> add false
-      | "all","remove" | "remove",_ -> remove
+      | "all","remove" | "remove",_ -> remove_d_or_f
       | "move",_ -> move df
       | _,_ -> failwith "external modif of to_be_commited file maked it unreadable\n"
       in
@@ -155,7 +162,15 @@ let compile_to_be () = (* cwd = root *)
       | Some key -> f_to_ch := (f,key) :: !f_to_ch
     ) !l_add_f ;
 
-  !f_to_cr,!f_to_ch,!f_to_rm,!f_to_mv,!d_to_cr,!d_to_mv,!d_to_rm,tbl_files
+  Outils.list_uniq !f_to_cr ,
+  Outils.list_uniq !f_to_ch ,
+  Outils.list_uniq !f_to_rm ,
+  Outils.list_uniq !f_to_mv ,
+  Outils.list_uniq !d_to_cr ,
+  Outils.list_uniq !d_to_mv ,
+  Outils.list_uniq !d_to_rm ,
+  tbl_files
+
 (* ================ *)
 
 

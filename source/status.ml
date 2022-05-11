@@ -7,7 +7,7 @@ let l_to_be = ref []
 let print_cr = printf "\t\x1B[32m-create \x1B[97m%s\n"
 let print_rm = printf "\t\x1B[31m-remove \x1B[97m%s\n"
 let print_ch = printf "\t\x1B[33m-modify \x1B[97m%s\n"
-let print_mv = printf "\t\x1B[33m-move   \x1B[97m%s \x1B[33mto \x1B[97m%s\n"
+let print_mv = printf "\t\x1B[34m-move   \x1B[97m%s \x1B[34mto \x1B[97m%s\n"
 
 let print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm =
   if f_to_cr=[] && f_to_ch=[] && f_to_rm=[] && f_to_mv=[]
@@ -23,8 +23,14 @@ let print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm =
   List.iter print_rm lrm ;
   List.iter print_ch lch ;
   List.iter2 print_mv lop lnp ;
-  if d_to_cr<>[] || d_to_mv<>[] || d_to_rm<>[]
-  then printf "Some directories will be created, moved or removed.\n" ;
+  if d_to_cr<>[] || d_to_mv<>[] || d_to_rm<>[] then
+  ( printf "Some directories will be created, moved or removed.\n" ;
+    if !bool_print_detail then begin
+      let ldop,ldnp = List.split d_to_mv in
+      List.iter print_cr d_to_cr ;
+      List.iter2 print_mv ldop ldnp ;
+      List.iter print_rm d_to_rm
+    end ) ;
   l_to_be := f_to_cr @ lrm @ lch @ lop 
   end
 (* ==================== *)

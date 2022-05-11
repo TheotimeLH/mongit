@@ -16,6 +16,7 @@ let print_detail str =
 exception No_repo
 exception Not_exists
 exception Not_in_the_tree
+exception Mg_error
 
 module IdMap = Map.Make(String)
 

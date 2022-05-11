@@ -29,14 +29,16 @@ let real_f_cr commit_ch f =
 
 let start_d_mv commit_ch (op,np) = (*oldpath newpath*)
   print_detail "Move dir : %s to %s\n" op np ;
-  Outils.create_dir np ;
+  if not !not_real then Outils.create_dir np ;
   Tree.add_d np ;
   fprintf commit_ch "MOVE DIR %s %s\n" op np
 
 let start_f_mv commit_ch ((op,key),np) =
   print_detail "Move file : %s to %s\n" op np ;
-  let ret = Sys.command (sprintf "cp %s %s" op np) in
-  if ret<>0 then (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1) ;
+  if not !not_real then
+  ( let ret = Sys.command (sprintf "cp %s %s" op np) in
+    if ret<>0 then 
+      (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1) ) ;
   Tree.add_f np key ;
   fprintf commit_ch "MOVE FILE %s %s %s\n" op np key ;
   printf "*" ; flush stdout
@@ -52,10 +54,10 @@ let start_f_rm commit_ch (f,key) =
   printf "*" ; flush stdout
 
 let final_f_ch key = Outils.remove_hash !dr_files key
-let final_d_mv (op,_)     = Tree.remove_d op ;  Outils.remove op
-let final_f_mv ((op,_),_) = Tree.remove_f op ;  Outils.remove op
-let final_d_rm d          = Tree.remove_d d  ;  Outils.remove d
-let final_f_rm (f,_)      = Tree.remove_f f  ;  Outils.remove f
+let final_d_mv (op,_)     = Tree.remove_d op ;  if not !not_real then Outils.remove op
+let final_f_mv ((op,_),_) = Tree.remove_f op ;  if not !not_real then Outils.remove op
+let final_d_rm d          = Tree.remove_d d  ;  if not !not_real then Outils.remove d
+let final_f_rm (f,_)      = Tree.remove_f f  ;  if not !not_real then Outils.remove f
 
 
 (* Compliqué : la fonction de modif, car on sauvegarde les différences *)

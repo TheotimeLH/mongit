@@ -9,7 +9,7 @@ let cmd_restore df = (* dir or file *)
   Unix.chdir !root ;
   (* On liste d'abord tous les fichiers à changer. *)
   let l_files = 
-    try Tree.enumerate_d_or_f rpath
+    try Tree.enumerate_unk rpath
     with | Not_in_the_tree ->
       eprintf "\"%s\" hasn't been found in the actual branch.\n" df ;
       exit 1 
