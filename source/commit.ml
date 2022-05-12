@@ -13,6 +13,7 @@ let nb_lines_del = ref 0
 
 (* ===== Fonctions effectives, qui add/remove/modifie/mv etc ===== *)
 (* Simple :) *)
+
 let real_d_cr commit_ch d =
   print_detail "Create dir : %s\n" d ;
   Tree.add_d d ;

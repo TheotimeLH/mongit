@@ -24,14 +24,13 @@ let cmd_move = function
     Outils.init () ;
     if not !not_real then Outils.exists_chk oldpath ;
     let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
-    print_debug "avant les rootpath" ;
     let r_old = Outils.rootpath oldpath
     and r_new = Outils.rootpath newpath in
-    print_debug "a passe les rootpath" ;
     if r_old="" || r_new="" then
     ( eprintf "You can't move the whole directory like that.\n" ;
       exit 1 )
-    else if r_old <> r_new then fprintf oc "move %s %s\n" r_old r_new ;
+    else if (r_old <> r_new) && (Tree.dont_overwrite_chk !not_real r_new)
+    then fprintf oc "move_%B %s %s\n" !not_real r_old r_new ;
     close_out oc
   | _ -> 
       eprintf "To move a file/dir with mg you must use :\
@@ -126,13 +125,19 @@ let compile_to_be () = (* cwd = root *)
     (Sys.readdir op)
   and move_d_or_f op np =
     if Sys.is_directory op then move_d op np else move_f op np
-  in
-  let move op np =
-    Outils.exists_chk op ;
-    if Sys.file_exists np then
-    ( eprintf "move %s %s ignored because %s already exists, we avoid overwriting\n"
-      op np np )
-    else move_d_or_f op np
+  in (* TODO NE PAS UTILISER IS_DIR ET READDIR MAIS SAFE_READDIR 
+    IE PASSER PAR L'ARBRE
+    MAIS DU COUP C'EST LA MERDE POUR SAVOIR QUI DÉPLACER
+
+    CHOIX : SI ON EST EN MODE REAL ON DEPLACE TOUT LE SOUS-DOSSIER
+    ET ON DEPLACE DANS L'ARBRE CE QUI APPARTIENT (EN GROS MV + MV TREE)
+    EN REVANCHE SI NOT_REAL ALORS QUE MV_TREE ET DANS CE CAS ON BOUGE
+    QUE CE QU'ON LIT DANS LE TREE.
+*)
+  let move not_real op np =
+    if not not_real then Outils.exists_chk op ;
+    if (Tree.dont_overwrite_chk not_real np)
+    then move_d_or_f op np
   in
   
   (* ==== SCAN ==== *)
@@ -146,7 +151,8 @@ let compile_to_be () = (* cwd = root *)
       | "all","add"    | "add",_    -> add true
       | "all","minus"  | "minus",_  -> add false
       | "all","remove" | "remove",_ -> remove_d_or_f
-      | "move",_ -> move df
+      | "move_true",_ -> move true df
+      | "move_false",_ -> move false df
       | _,_ -> failwith "external modif of to_be_commited file maked it unreadable\n"
       in
       if a="all" then fct_on_d "." "" fct_to_use

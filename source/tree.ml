@@ -172,4 +172,15 @@ let remove_d d =
   erase key
 (* ================ *)
 
-
+(* === CHECK === *)
+let dont_overwrite_chk not_real df =
+  if not
+  ( if (not not_real) && (Sys.file_exists df) then false
+    else try ignore (find_key_df df) ; false
+    with | Not_in_the_tree -> true  )
+  then ( eprintf 
+    "Error : operation ignored to avoid overwriting \
+     (in the repo or/and in the real directory. " ;
+     false )
+  else true
+(* ================ *)
