@@ -7,9 +7,9 @@ let msg = ref ""
 let nb_rebuilt = ref 0
 let nb_minor = ref 0
 let nb_nothing = ref 0
-let key_to_suppr = ref []
 let nb_lines_add = ref 0
 let nb_lines_del = ref 0
+let tbl_fkeys = ref IdMap.empty
 
 (* ===== Fonctions effectives, qui add/remove/modifie/mv etc ===== *)
 
@@ -22,9 +22,10 @@ let do_d_cr commit_ch d =
 let do_f_cr commit_ch f =
   print_detail "Create file : %s\n" f ;
   Outils.store f !dr_files ;
-  nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;
+  (*nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;*)
   let key = Outils.mksha f in
   Tree.add_f f key ;
+  tbl_fkeys := IdMap.add key (IdSet.singleton !branch) !tbl_fkeys ;
   fprintf commit_ch "CREATE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 
@@ -59,7 +60,7 @@ let end_d_rm d = Tree.remove_d d
 
 let begin_f_rm commit_ch (f,key) =
   print_detail "Remove file : %s\n" f ;
-  nb_lines_del := !nb_lines_del + (Array.length (Outils.readlines f)) ;
+  (*nb_lines_del := !nb_lines_del + (Array.length (Outils.readlines f)) ;*)
   fprintf commit_ch "REMOVE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 let end_f_rm (f,_) = Tree.remove_f f
@@ -76,6 +77,7 @@ let do_f_ch commit_ch (f,old_key) =
     Outils.store f !dr_files ;
     Tree.remove_f f ;
     Tree.add_f f new_key ;
+    tbl_fkeys := IdMap.add new_key (IdSet.singleton !branch) !tbl_fkeys ;
   (* Charger l'ancienne, via un fichier où la décompresser *)
     let tmp_old_file = Filename.concat !dr_files "tmp_old_file" in
     let old_ch = open_out tmp_old_file in
@@ -109,7 +111,8 @@ let do_f_ch commit_ch (f,old_key) =
       incr nb_minor ;
       fprintf commit_ch "MODIF MINOR %s %s %d\n"
         f new_key (List.length old_in_new) ;
-      key_to_suppr := old_key :: !key_to_suppr ;
+      tbl_fkeys := IdMap.add old_key 
+      (IdSet.remove !branch (IdMap.find old_key !tbl_fkeys)) !tbl_fkeys ;
       let aux_modif = function (* : Scan_diff.change type *)
         | Add(i,j) -> 
             fprintf commit_ch "Add l-%d to l-%d (new numbering)\n" i j
@@ -140,8 +143,8 @@ let end_f_ch key = Outils.remove_hash !dr_files key
 (* ===== cmd_commit ===== *)
 let cmd_commit () =
   Outils.init () ;
-  Root.real_cwd := Unix.getcwd () ;
-  Unix.chdir (Filename.dirname !repo) ;
+  Outils.rootwd () ;
+  tbl_fkeys := Tree.load_tbl_fkeys () ;
   let d_to_cr,f_to_cr,f_to_ch,
     d_to_rm_real,f_to_rm_real,d_to_mv_real,f_to_mv_real,
     d_to_rm_tree,f_to_rm_tree,d_to_mv_tree,f_to_mv_tree,
@@ -176,8 +179,8 @@ let cmd_commit () =
     let commit_ch = open_out tmp_file in
 
     let pcommit = Outils.find_commit () in
-    fprintf commit_ch "\nBranch : %s\n" !branch ;
-    fprintf commit_ch "\nParent commits : %s\n" pcommit ;
+    (*fprintf commit_ch "\nBranch : %s\n" !branch ;*)
+    fprintf commit_ch "Parent commits : %s\n" pcommit ;
 
     List.iter (do_d_cr commit_ch) d_to_cr ;
     List.iter (do_f_cr commit_ch) f_to_cr ;
@@ -195,11 +198,21 @@ let cmd_commit () =
     fprintf oc "last commit : %s\n" (Outils.mksha tmp_file) ;
     close_out oc ;
 
-    List.iter end_f_ch !key_to_suppr ;
     List.iter end_d_mv d_to_mv_tree ;
     List.iter end_f_mv f_to_mv_tree ;
     List.iter end_d_rm d_to_rm_tree ;
     List.iter end_f_rm f_to_rm_tree ;
+
+    let oc = open_out (Filename.concat !dr_files "all_fkeys") in
+    IdMap.iter 
+    (fun key st -> if st = IdSet.empty then end_f_ch key
+      else begin 
+        let nb = IdSet.cardinal st in
+        fprintf oc "%s %d " key nb ;
+        IdSet.iter (fprintf oc "%s ") st ;
+        fprintf oc "\n"
+    end) !tbl_fkeys ;
+    close_out oc ;
 
     if not !bool_print_debug then Sys.remove tmp_file ;
     printf 
@@ -223,7 +236,7 @@ let cmd_commit () =
   end ;
 
   Outils.empty_file !to_be ;
-  Unix.chdir !Root.real_cwd 
+  Outils.realwd () 
 (* ================ *)
 
 

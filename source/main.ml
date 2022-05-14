@@ -10,6 +10,24 @@ let subparser_commit () =
       Set_string Commit.msg ,
       "add a message to the commit");
   ]
+
+let subparser_branch () =
+  subparser := "branch" ;
+  speclist := [
+   ("-create",
+      String Branch.cmd_create ,
+      "create a new branch on place");
+   ("-list",
+      Unit Branch.cmd_list ,
+      "list all the existing branches");
+   ("-switch",
+      String Branch.cmd_switch ,
+      "change of current/HEAD branch");
+   ("-graph",
+      Unit Branch.cmd_graph ,
+      "display a graph of the commits and branches");
+  ]
+
 let () = speclist :=
   [("-debug", 
       Set Root.bool_print_debug , 
@@ -70,6 +88,9 @@ let () = speclist :=
    ("-only_on_repo", 
       Set Root.only_on_repo , 
       "Limits remove and move commands so that they only affect the repo");
+   ("-branch",
+      Unit subparser_branch,
+      "To acces commands on branches.");
    ]
 
 

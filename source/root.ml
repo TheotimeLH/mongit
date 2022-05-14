@@ -19,6 +19,7 @@ exception Not_in_the_tree
 exception Mg_error
 
 module IdMap = Map.Make(String)
+module IdSet = Set.Make(String)
 
 let mkdir_num = 0o775
 let mkfile_num = 0o664

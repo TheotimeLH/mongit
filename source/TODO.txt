@@ -1,8 +1,8 @@
 
-branch create <nom>
-branch list
-branch switch <nom>
-branch graph
+v branch create <nom>
+v branch list
+v branch switch <nom>
+v branch graph
 branch merge <nom 1> <nom 2> 
 branch backward <nb steps>
 branch forward <nb steps>

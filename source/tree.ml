@@ -5,7 +5,7 @@ open Root
 let rec add_f f key = 
   (* /!\ non déjà présent et en rootpath !*)
   let dir = Filename.dirname f |> Outils.np in
-  let fnd = Outils.with_branch dir in
+  let fnd = Outils.with_branch !branch dir in
   let hdir = Filename.concat !dr_trees (Outils.sha_name fnd) in 
   if not (Sys.file_exists hdir) then add_d dir ;
   let oc_dir = open_out_gen [Open_append] 0 hdir in
@@ -14,12 +14,12 @@ let rec add_f f key =
   close_out oc_dir
 
 and add_d d =
-  let fnd = Outils.with_branch d in
+  let fnd = Outils.with_branch !branch d in
   let key = Outils.sha_name fnd in
   let hf = Filename.concat !dr_trees key in
   if not (Sys.file_exists hf) then begin
   let parent = Filename.dirname d |> Outils.np in
-  let fndp = Outils.with_branch parent in 
+  let fndp = Outils.with_branch !branch parent in 
   let hparent = Filename.concat !dr_trees (Outils.sha_name fndp) in
   if not (Sys.file_exists hparent) then add_d parent ;
   let oc_par = open_out_gen [Open_append] 0 hparent in
@@ -53,22 +53,16 @@ let cmd_ls () =
     done with | End_of_file -> () end ;
     Scanf.Scanning.close_in ic
   in
-  read "" (Outils.sha_name (Outils.with_branch "")) 0;
+  read "" (Outils.sha_name (Outils.with_branch !branch "")) 0;
   fprintf oc "}" ;
   close_out oc ;
-  let ret = Sys.command 
-    "dot -Tpdf repo_tree.dot > repo_tree.pdf && evince repo_tree.pdf" in
-  if ret <> 0 then
-    ( eprintf "(controled) problem with dot cmd\n" ; exit 1) ;
-  if not !bool_print_debug then
-    (Sys.remove "repo_tree.pdf" ;
-     Sys.remove "repo_tree.dot")
+  Outils.use_graphviz "repo_tree"
 (* ================ *)
 
 
 (* ===== FIND KEY  ===== *)
 let find_key_d d = (* en rootpath *)
-  let key = Outils.sha_name (Outils.with_branch d) in
+  let key = Outils.sha_name (Outils.with_branch !branch d) in
   let dt = Filename.concat !dr_trees key in
   if not (Sys.file_exists dt) then raise Not_in_the_tree
   else key
@@ -130,6 +124,22 @@ let load_tbl_files () =
     (fun tbl (f,key) -> IdMap.add f key tbl)
     IdMap.empty
     (enumerate_unk "" |> snd)
+
+
+let load_tbl_fkeys () =
+  let ic = Scanf.Scanning.open_in (Filename.concat !dr_files "all_fkeys") in
+  let tbl = ref IdMap.empty in
+  begin try while true do
+    Scanf.bscanf ic "%s %d "
+    (fun key nb ->
+      let st = ref IdSet.empty in
+      for _ = 1 to nb do
+        Scanf.bscanf ic "%s " 
+        (fun br -> st := IdSet.add br !st)
+      done ;
+      tbl := IdMap.add key !st !tbl)
+  done with | End_of_file -> Scanf.Scanning.close_in ic end ;
+  !tbl
 (* ================ *)
 
 
@@ -137,7 +147,7 @@ let load_tbl_files () =
 let remove_f df =
   print_debug "Try to remove : %s from the tree\n" df ;
   let dir = Filename.dirname df |> Outils.np in
-  let fnd = Outils.with_branch dir in
+  let fnd = Outils.with_branch !branch dir in
   let hdir = Filename.concat !dr_trees (Outils.sha_name fnd) in 
   let bn = Filename.basename df in
   if Sys.file_exists hdir then begin
@@ -170,7 +180,7 @@ let rec erase key =
 let remove_d d =
   remove_f d ; (* vis à vis du parent *)
   (* Maintenant il faut supprimer le sub_tree en soit *)
-  let fnd = Outils.with_branch d in
+  let fnd = Outils.with_branch !branch d in
   let key = Outils.sha_name fnd in
   erase key
 (* ================ *)
@@ -188,3 +198,29 @@ let dont_overwrite_chk not_real df =
      false )
   else true
 (* ================ *)
+
+
+(* ===== COPY ===== *)
+let copy br1 br2 =
+  let op = Outils.sha_name (Outils.with_branch br1 "")
+  and np = Outils.sha_name (Outils.with_branch br2 "") in
+  let rec aux op np dir =
+    let op = Filename.concat !dr_trees op
+    and np = Filename.concat !dr_trees np in
+    let ic = Scanf.Scanning.open_in op
+    and oc = open_out np in
+    try while true do
+      Scanf.bscanf ic "%s %s %s\n" 
+      (fun t bn k -> fprintf oc "%s %s %s\n" t bn
+      (if t="file" then k else (
+       let subdir = Filename.concat dir bn in
+       let np = (Outils.sha_name (Outils.with_branch br2 subdir)) in
+       aux k np subdir; np)))
+    done with | End_of_file -> Scanf.Scanning.close_in ic ; close_out oc
+  in
+  aux op np ""
+
+  (* TODO Dupliquer dans all_fkeys *)
+(* ================ *)
+
+

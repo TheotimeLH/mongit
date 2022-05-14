@@ -105,7 +105,7 @@ let repo_find_with_path path =
 
 let repo_find () = repo_find_with_path "."
 (* ================== *)
-  
+
 
 (* ===== CHECK ===== *)
 let repo_find_chk () =
@@ -145,8 +145,8 @@ let find_branch () =
   branch := input_line ic ;
   close_in ic
 
-let with_branch s =
-  sprintf "%s:%s" !branch s
+let with_branch br s =
+  sprintf "%s:%s" br s
 
 let find_commit () =
   let f = Filename.concat !dr_brnch !branch in
@@ -166,6 +166,13 @@ let init () =
   Root.dr_brnch := Filename.concat !repo "branches" ;
   Root.to_be    := Filename.concat !repo "to_be_commited" ;
   find_branch ()
+
+let rootwd () =
+  Root.real_cwd := Unix.getcwd () ;
+  Unix.chdir !root
+
+let realwd () =
+  Unix.chdir !Root.real_cwd 
 (* ================== *)
 
 
@@ -184,6 +191,16 @@ let cut_sha str_h =
   let key = String.sub str_h 0 2 in
   let rest = String.sub str_h 2 (String.length str_h - 2) in
   key,rest
+
+let list_sha dir =
+  let asubdir = Sys.readdir dir in
+  let l = ref [] in
+  Array.iter 
+  ( fun sub -> 
+    let af = Sys.readdir (Filename.concat dir sub) in
+    Array.iter (fun k -> append l (sub ^ k)) af 
+  ) asubdir ;
+  !l
 (* ================== *)
   
 
@@ -234,4 +251,19 @@ let remove_hash dir str_h =
   try Sys.rmdir subdir 
   with | _ (* not empty *) -> ()
 (* ================== *)
+
+
+(* ===== GRAPHVIZ ===== *)
+let use_graphviz s =
+  let _dot = s^".dot" 
+  and _pdf = s^".pdf" in
+  let ret = Sys.command 
+  ( sprintf "dot -Tpdf %s > %s && evince %s" _dot _pdf _pdf ) in
+  if ret <> 0 then
+    ( eprintf "(controled) problem with dot cmd\n" ; exit 1) ;
+  if not !bool_print_debug then
+    (Sys.remove _pdf ;
+     Sys.remove _dot )
+(* ================== *)
+
 

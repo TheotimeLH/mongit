@@ -18,6 +18,7 @@ let init () =
   Outils.init_file ".mongit/branches/HEAD" "Initial\n" ;
   Outils.init_file ".mongit/branches/Initial" "last commit : none\n" ;
   Outils.empty_file ".mongit/to_be_commited" ;
+  Outils.empty_file ".mongit/files/all_fkeys" ;
   Outils.empty_file 
     ("Initial:" (* rootpath of root + on the initial branch*)
     |> Outils.sha_name 
