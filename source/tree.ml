@@ -97,8 +97,10 @@ let find_key_df df =
 
 
 (* ===== ENUMERATE ===== *)
-let enumerate d key =
-  let l = ref [] in
+let enumerate d key = (* -> dir list * file list *)
+  let ldir = ref []
+  and lfiles = ref [] in
+  if d<>"" then Outils.append ldir d ;
   let rec read dir key =
     let tree = Filename.concat !dr_trees key in
     Outils.exists_chk tree ;
@@ -106,27 +108,28 @@ let enumerate d key =
     begin try while true do
       Scanf.bscanf ic "%s %s %s\n"
       (fun t s nk ->
-        if t="dir" then read (Filename.concat dir s) nk
-        else if !include_secret || s.[0] <> '.' 
-        then l := (Filename.concat dir s,nk) :: !l)
+        (*if !include_secret || s.[0] <> '.' then*)
+        let x = Filename.concat dir s in
+        if t="dir" then ( Outils.append ldir x ; read x nk )
+        else Outils.append lfiles (x,nk) )
     done with | End_of_file -> () end ;
   in
   read d key ;
-  !l
+  !ldir,!lfiles
 
-let enumerate_unk df =
+let enumerate_unk df = (* -> dir list * file list *)
   print_debug "enumerate df = %s\n" df ;
   if df="" then enumerate "" (find_key_d "")
   else 
     let is_f,key = find_key_df df in
-    if is_f then [(df,key)]
+    if is_f then ([],[(df,key)])
     else enumerate df key
 
 let load_tbl_files () =
   List.fold_left
     (fun tbl (f,key) -> IdMap.add f key tbl)
     IdMap.empty
-    (enumerate "" (find_key_d ""))
+    (enumerate_unk "" |> snd)
 (* ================ *)
 
 
@@ -180,7 +183,8 @@ let dont_overwrite_chk not_real df =
     with | Not_in_the_tree -> true  )
   then ( eprintf 
     "Error : operation ignored to avoid overwriting \
-     (in the repo or/and in the real directory. " ;
+     (in the repo or/and in the real directory) maybe \
+     you should consider the -only_on_repo option.\n" ;
      false )
   else true
 (* ================ *)

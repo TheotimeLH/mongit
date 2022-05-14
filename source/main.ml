@@ -67,8 +67,8 @@ let () = speclist :=
    ("-restore",
       String Restore.cmd_restore ,
       "Restore the file requested (or the whole directory).");
-   ("-not_real", 
-      Set Root.not_real , 
+   ("-only_on_repo", 
+      Set Root.only_on_repo , 
       "Limits remove and move commands so that they only affect the repo");
    ]
 

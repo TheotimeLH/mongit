@@ -38,6 +38,11 @@ let np s = if s="." then "" else s
 let rec list_uniq = function 
   | [] -> []
   | h :: q -> if List.mem h q then list_uniq q else h :: list_uniq q
+
+let append rl x =
+  rl := x :: !rl
+let extend rl l =
+  rl := l @ !rl
 (* ================== *)
 
 

@@ -59,8 +59,10 @@ let cmd_status () =
   Outils.init () ;
   Root.real_cwd := Unix.getcwd () ;
   Unix.chdir !root ;
-  let f_to_cr,f_to_ch,f_to_rm,f_to_mv,d_to_cr,d_to_mv,d_to_rm,tbl_files
-    = Pre_commit.compile_to_be () in
+  let d_to_cr,f_to_cr,f_to_ch,
+    _,_,_,_,
+    d_to_rm,f_to_rm,d_to_mv,f_to_mv,
+    tbl_files = Pre_commit.compile_to_be () in
   print_to_be f_to_cr f_to_ch f_to_rm f_to_mv d_to_cr d_to_mv d_to_rm ;
   printf " ================================================= \n" ;
   print_changed tbl_files ;

@@ -12,14 +12,14 @@ let nb_lines_add = ref 0
 let nb_lines_del = ref 0
 
 (* ===== Fonctions effectives, qui add/remove/modifie/mv etc ===== *)
-(* Simple :) *)
 
-let real_d_cr commit_ch d =
+(* == CREATE == *)
+let do_d_cr commit_ch d =
   print_detail "Create dir : %s\n" d ;
   Tree.add_d d ;
   fprintf commit_ch "CREATE DIR %s\n" d
 
-let real_f_cr commit_ch f =
+let do_f_cr commit_ch f =
   print_detail "Create file : %s\n" f ;
   Outils.store f !dr_files ;
   nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;
@@ -28,42 +28,47 @@ let real_f_cr commit_ch f =
   fprintf commit_ch "CREATE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 
-let start_d_mv commit_ch (op,np) = (*oldpath newpath*)
+
+(* == MOVE == *)
+let real_mv (op,np) =
+  let ret = Sys.command (sprintf "mv %s %s" op np) in
+  if ret<>0 then 
+  (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1)
+
+let begin_d_mv commit_ch (op,np) = (*oldpath newpath*)
   print_detail "Move dir : %s to %s\n" op np ;
-  if not !not_real then Outils.create_dir np ;
   Tree.add_d np ;
   fprintf commit_ch "MOVE DIR %s %s\n" op np
+let end_d_mv (op,_) = Tree.remove_d op
 
-let start_f_mv commit_ch ((op,key),np) =
+let begin_f_mv commit_ch ((op,key),np) =
   print_detail "Move file : %s to %s\n" op np ;
-  if not !not_real then
-  ( let ret = Sys.command (sprintf "cp %s %s" op np) in
-    if ret<>0 then 
-      (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1) ) ;
   Tree.add_f np key ;
   fprintf commit_ch "MOVE FILE %s %s %s\n" op np key ;
   printf "*" ; flush stdout
+let end_f_mv ((op,_),_) = Tree.remove_f op
 
-let start_d_rm commit_ch d =
+
+(* == REMOVE == *)
+let real_rm = Outils.remove
+
+let begin_d_rm commit_ch d =
   print_detail "Remove dir : %s\n" d ;
   fprintf commit_ch "REMOVE DIR %s\n" d
+let end_d_rm d = Tree.remove_d d
 
-let start_f_rm commit_ch (f,key) =
+let begin_f_rm commit_ch (f,key) =
   print_detail "Remove file : %s\n" f ;
   nb_lines_del := !nb_lines_del + (Array.length (Outils.readlines f)) ;
   fprintf commit_ch "REMOVE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
-
-let final_f_ch key = Outils.remove_hash !dr_files key
-let final_d_mv (op,_)     = Tree.remove_d op ;  if not !not_real then Outils.remove op
-let final_f_mv ((op,_),_) = Tree.remove_f op ;  if not !not_real then Outils.remove op
-let final_d_rm d          = Tree.remove_d d  ;  if not !not_real then Outils.remove d
-let final_f_rm (f,_)      = Tree.remove_f f  ;  if not !not_real then Outils.remove f
+let end_f_rm (f,_) = Tree.remove_f f
 
 
-(* Compliqué : la fonction de modif, car on sauvegarde les différences *)
+(* == MODIF == *)
+(* Compliqué : car on sauvegarde les différences *)
 
-let real_f_ch commit_ch (f,old_key) =
+let do_f_ch commit_ch (f,old_key) =
   print_detail "Change file : %s\n" f ;
   let new_key = Outils.mksha f in
   if old_key <> new_key then begin
@@ -127,6 +132,8 @@ let real_f_ch commit_ch (f,old_key) =
     end
   else incr nb_nothing ;
   printf "*" ; flush stdout
+
+let end_f_ch key = Outils.remove_hash !dr_files key
 (* ================ *)
 
 
@@ -135,24 +142,36 @@ let cmd_commit () =
   Outils.init () ;
   Root.real_cwd := Unix.getcwd () ;
   Unix.chdir (Filename.dirname !repo) ;
-  let f_to_cr,f_to_ch,f_to_rm,f_to_mv,d_to_cr,d_to_mv,d_to_rm,_
-    = Pre_commit.compile_to_be () in
-  let nb_f_cr = List.length f_to_cr
+  let d_to_cr,f_to_cr,f_to_ch,
+    d_to_rm_real,f_to_rm_real,d_to_mv_real,f_to_mv_real,
+    d_to_rm_tree,f_to_rm_tree,d_to_mv_tree,f_to_mv_tree,
+    _ = Pre_commit.compile_to_be () in
+
+  let nb_d_cr = List.length d_to_cr
+  and nb_f_cr = List.length f_to_cr
   and nb_f_ch = List.length f_to_ch
-  and nb_f_rm = List.length f_to_rm
-  and nb_f_mv = List.length f_to_mv
-  and nb_d_cr = List.length d_to_cr
-  and nb_d_rm = List.length d_to_rm
-  and nb_d_mv = List.length d_to_mv in
-  let nb_f = nb_f_cr + nb_f_ch + nb_f_rm + nb_f_mv
-  and nb_d = nb_d_cr + nb_d_rm + nb_d_mv in
-  if nb_f+nb_d=0 then eprintf "Nothing to commit, use mg -add first.\n"
+  and nb_f_rm_real = List.length f_to_rm_real
+  and nb_f_rm_tree = List.length f_to_rm_tree
+  and nb_d_rm_real = List.length d_to_rm_real
+  and nb_d_rm_tree = List.length d_to_rm_tree
+  and nb_f_mv_real = List.length f_to_mv_real
+  and nb_f_mv_tree = List.length f_to_mv_tree
+  and nb_d_mv_real = List.length d_to_mv_real
+  and nb_d_mv_tree = List.length d_to_mv_tree in
+  let nb_f_tree = nb_f_cr + nb_f_ch + nb_f_rm_tree + nb_f_mv_tree
+  and nb_d_tree = nb_d_cr + nb_d_rm_tree + nb_d_mv_tree in
+  let nb_f_real = nb_f_rm_real + nb_f_mv_real
+  and nb_d_real = nb_d_rm_real + nb_d_mv_real in
+
+  if nb_f_tree+nb_d_tree=0 
+  then eprintf "Nothing to commit, use mg -add first.\n"
   else begin
-    printf "-> %d file(s) to handle (and %d directories) :\n|" nb_f nb_d ;
+    printf "Modification of the branch \"%s\" :\n" !branch ;
+    printf "-> %d file(s) to handle (and %d dir(s)) :\n|" nb_f_tree nb_d_tree ;
     flush stdout ;
     (* Idée : On écrit et on enregistre toutes les modifications avant
-       de faire quoique ce soit d'irréversible. Donc on "register" dans le
-       commit qu'on va suppr, avant de le faire effectivement par exemple. *)
+       de faire quoique ce soit d'irréversible. Donc on enregistre dans
+       le commit ce qu'on va suppr, avant de le faire effectivement. *)
     let tmp_file = Filename.concat !dr_comms "tmp_commit_file" in
     let commit_ch = open_out tmp_file in
 
@@ -160,13 +179,13 @@ let cmd_commit () =
     fprintf commit_ch "\nBranch : %s\n" !branch ;
     fprintf commit_ch "\nParent commits : %s\n" pcommit ;
 
-    List.iter (real_d_cr commit_ch) d_to_cr ;
-    List.iter (real_f_cr commit_ch) f_to_cr ;
-    List.iter (real_f_ch commit_ch) f_to_ch ;
-    List.iter (start_d_mv commit_ch) d_to_mv ;
-    List.iter (start_f_mv commit_ch) f_to_mv ;
-    List.iter (start_d_rm commit_ch) d_to_rm ;
-    List.iter (start_f_rm commit_ch) f_to_rm ;
+    List.iter (do_d_cr commit_ch) d_to_cr ;
+    List.iter (do_f_cr commit_ch) f_to_cr ;
+    List.iter (do_f_ch commit_ch) f_to_ch ;
+    List.iter (begin_d_mv commit_ch) d_to_mv_tree ;
+    List.iter (begin_f_mv commit_ch) f_to_mv_tree ;
+    List.iter (begin_d_rm commit_ch) d_to_rm_tree ;
+    List.iter (begin_f_rm commit_ch) f_to_rm_tree ;
 
     fprintf commit_ch "\nMessage :\n%s" !msg ;
 
@@ -176,20 +195,33 @@ let cmd_commit () =
     fprintf oc "last commit : %s\n" (Outils.mksha tmp_file) ;
     close_out oc ;
 
-    List.iter final_f_ch !key_to_suppr ;
-    List.iter final_d_mv d_to_mv ;
-    List.iter final_f_mv f_to_mv ;
-    List.iter final_d_rm d_to_rm ;
-    List.iter final_f_rm f_to_rm ;
+    List.iter end_f_ch !key_to_suppr ;
+    List.iter end_d_mv d_to_mv_tree ;
+    List.iter end_f_mv f_to_mv_tree ;
+    List.iter end_d_rm d_to_rm_tree ;
+    List.iter end_f_rm f_to_rm_tree ;
 
     if not !bool_print_debug then Sys.remove tmp_file ;
     printf 
     "\nDone. created : %d ; rebuilt : %d ; slightly modified : %d ; \
       unchanged : %d ; removed : %d ; moved : %d\n"
-      nb_f_cr !nb_rebuilt !nb_minor !nb_nothing nb_f_rm nb_f_mv ;
+      nb_f_cr !nb_rebuilt !nb_minor !nb_nothing nb_f_rm_tree nb_f_mv_tree ;
     printf "Total : %d insertions(+), %d deletions(-)\n"
       !nb_lines_add !nb_lines_del ;
   end ;
+  
+  if nb_f_real+nb_d_real<>0 then begin
+    printf 
+      "Now we will apply move and remove commands on \
+       the real directory (%d file(s) and %d dir(s)). \
+       Next time, if you only want to operate on the \
+       repo use the -only_on_repo option.\n" nb_f_real nb_d_real ;
+    List.iter real_mv d_to_mv_real ;
+    List.iter real_mv f_to_mv_real ;
+    List.iter real_rm d_to_rm_real ;
+    List.iter real_rm f_to_rm_real
+  end ;
+
   Outils.empty_file !to_be ;
   Unix.chdir !Root.real_cwd 
 (* ================ *)

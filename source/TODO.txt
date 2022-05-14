@@ -79,3 +79,7 @@ avec une commande pour print les différences
 
 Si diff de plus de la moitié, on sauvegarde entièrement la nouvelle version
 
+    CHOIX : SI ON EST EN MODE REAL ON DEPLACE TOUT LE SOUS-DOSSIER
+    ET ON DEPLACE DANS L'ARBRE CE QUI Y APPARTIENT (EN GROS MV + MV TREE)
+    EN REVANCHE SI NOT_REAL ALORS QUE MV_TREE ET DANS CE CAS ON BOUGE
+    QUE CE QU'ON LIT DANS LE TREE.
