@@ -131,7 +131,8 @@ let backward branch cm_sha =
   let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
   Outils.load_fn cm_sha !dr_comms tmp_commit ;
   let cch = Scanf.Scanning.open_in tmp_commit in
-  Scanf.bscanf cch "Parent commits : %_d %_s\n" () ;
+  let pcommit = (*Pour le moment, car pas de merge*)
+    Scanf.bscanf cch "Parent commits : 1 %s\n" (fun s -> s) in
   let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
   for _ = 1 to nb_op do
     Scanf.bscanf cch "%s %s "
@@ -149,7 +150,7 @@ let backward branch cm_sha =
   Scanf.Scanning.close_in cch ;
   Outils.flush_tbl_fkeys !tbl_fkeys ;
   Outils.remove tmp_commit ;
-  Outils.set_commit branch cm_sha ;
+  Outils.set_commit branch pcommit ;
   Outils.branch_switch_former () ;
   print_detail "Forward : branch %s -> %s\n" branch cm_sha
 (* ========================== *)

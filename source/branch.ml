@@ -103,33 +103,37 @@ let cmd_graph () =
   fprintf oc "digraph branches_graph{\nrankdir=LR;\n" ;
   let commits = Outils.list_sha !dr_comms in
   let gr = fst (make_commit_graph commits) in
-  let n = ref (List.length commits) in
-  let tbl_num = ref (IdMap.singleton "none" !n) in
-  fprintf oc "%d [label=\"none\"];\n" !n;
+  let n = List.length commits in
+  let tbl_num = ref (IdMap.singleton "none" n) in
+  fprintf oc "%d [label=\"\"];\n" n ; (* tmp *)
+
+  (* == COMMITS == *)
   List.iteri (fun i cm -> tbl_num := IdMap.add cm i !tbl_num) commits ;
   List.iter
   (fun cm ->
-    let num  = IdMap.find cm  !tbl_num in
-    fprintf oc "%d [label=\"%s\"];\n" num (Outils.short cm) ; 
+    let num = IdMap.find cm !tbl_num in
+    fprintf oc "%d [label=\"\"];\n" num ; (* tmp *)
     IdSet.iter 
-      (fun pcm -> fprintf oc "%d -> %d;\n" (IdMap.find pcm !tbl_num) num)
-      (IdMap.find cm gr)
+    (fun pcm -> fprintf oc "%d -> %d [label=\"%s\"];\n" 
+      (IdMap.find pcm !tbl_num) num (Outils.short cm)
+    ) (IdMap.find cm gr)
   ) commits ;
 
+  (* == BRANCHES == *)
   let branches = list_br () in
+  let tbl_br_cm = ref IdMap.empty in
   List.iter
-  (fun br ->
-    incr n ;
-    if br = !branch 
-    then fprintf oc "%d [label=\"%s\",color=red];  \n" !n br
-    else fprintf oc "%d [label=\"%s\",color=blue]; \n" !n br ;
-    let ic = open_in (Filename.concat !dr_brnch br) in
-    Scanf.sscanf (input_line ic) "last commit : %s"
-    (fun cm -> 
-      let num = IdMap.find cm !tbl_num in
-      fprintf oc "%d -> %d [arrowhead=none,arrowtail=inv];\n" num !n) ;
-    close_in ic
+  (fun br -> let cm = Outils.find_commit br in 
+    tbl_br_cm := Outils.map_set_add cm br !tbl_br_cm
   ) branches ;
+
+  IdMap.iter 
+  (fun cm st_br ->
+    let num = IdMap.find cm !tbl_num in
+    fprintf oc "%d [label=\"%s\",color=%s];\n" num
+      (String.concat "\n" (IdSet.elements st_br)) 
+      (if IdSet.mem !branch st_br then "red" else "blue")
+  ) !tbl_br_cm ;
 
   fprintf oc "}" ;
   close_out oc ;
@@ -138,26 +142,22 @@ let cmd_graph () =
 
 
 (* ===== FORWARD / BACKWARD ====== *)
-let move_branch sens br nb_pas =
+let move_forward br nb_pas =
   let commits = Outils.list_sha !dr_comms in
-  let gr = 
-    (if sens then snd else fst) 
-    (make_commit_graph commits) in
-  let mvt_fct,mvt = if sens 
-    then (Branch_mvt.forward ,"forward" )
-    else (Branch_mvt.backward,"backward") in
+  let gr = fst (make_commit_graph commits) in
+  let mvt_fct = Branch_mvt.forward in
   let cm = ref (Outils.find_commit br) in
   for _ = 1 to nb_pas do
-    if !cm = "None" then (eprintf "Reached the root state.\n" ; exit 0) ;
-    let st_next = IdMap.find !cm gr in
+    let st_next = match IdMap.find_opt !cm gr with
+    | None -> IdSet.empty 
+    | Some st -> st in
     match IdSet.elements st_next with
     | [] -> ()
-    | [cm_next] -> 
-      if cm_next<>"None" then (mvt_fct br cm_next ; cm := cm_next)
+    | [cm_next] -> mvt_fct br cm_next ; cm := cm_next
     | l -> printf
-      "The branch %s cannot be moved %s after \"%s...\" \
+      "The branch %s cannot be moved forward after \"%s...\" \
        because several commits are possible :\n%s\n"
-       br mvt (Outils.short !cm) (String.concat "\n" l) ;
+       br (Outils.short !cm) (String.concat "\n" l) ;
        let cm_next = ref "" in
        while !cm_next<>"stop" && not (List.mem !cm_next l) do
         printf "You can write \"stop\" to end the migration here, \
@@ -166,17 +166,24 @@ let move_branch sens br nb_pas =
         cm_next := read_line ()
        done ;
        if !cm_next="stop" then (printf "Stopped.\n";exit 0)
-       else if !cm_next="none" then exit 0
        else (mvt_fct br !cm_next ; cm := !cm_next)
   done
 
+let move_backward br nb_pas = (* Pas encore de merge, donc simple *)
+  for _ = 1 to nb_pas do
+    let cm = Outils.find_commit br in
+    print_debug "Commit à back : %s\n" cm ;
+    if cm<>"none" then Branch_mvt.backward br cm 
+  done
+
+
 let cmd_forward nb_pas = 
   Outils.init () ;
-  move_branch true !branch nb_pas
+  move_forward !branch nb_pas
 
 let cmd_backward nb_pas = 
   Outils.init () ;
-  move_branch false !branch nb_pas
+  move_backward !branch nb_pas
 (* ================= *)
 
 
