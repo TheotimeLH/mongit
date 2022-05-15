@@ -87,6 +87,9 @@ let find_key_df df =
   with | End_of_file -> 
     Scanf.Scanning.close_in ic ; raise Not_in_the_tree
 
+let mem_d d = 
+  try ignore (find_key_d d) ; true
+  with | Not_in_the_tree -> false
 (* ================ *)
 
 

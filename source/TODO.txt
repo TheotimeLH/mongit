@@ -9,6 +9,7 @@ branch forward <nb steps>
 -> Si plusieurs bifurcations pour le moment c'est via les noms de commits
 -> Si plusieurs, on print la liste des clés des commits et on invite à faire
 -> cat_commit pour choisir
+-> On peut bifurquer en forward mais aussi en backward si il y a eu un merge
 
 /!\ Quand on change de branch, par sécurité on clean to_be_commited
 

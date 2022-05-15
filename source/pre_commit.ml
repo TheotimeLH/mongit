@@ -83,10 +83,8 @@ let compile_to_be () = (* cwd = root *)
     else l_add_f := Outils.list_rm_fst_occ f !l_add_f (*minus*)
   in
   let rec add_d b d = 
-    if b then (*add*)
-      begin try ignore (Tree.find_key_d d)
-      with | Not_in_the_tree -> d_to_cr := d :: !d_to_cr 
-    end
+    if b then (* add *)
+    begin if not (Tree.mem_d d) then Outils.append d_to_cr d end
     else d_to_cr := Outils.list_rm_fst_occ d !d_to_cr ; (*minus*)
     apply_rec d d (add_d_or_f b) 
   and add_d_or_f b df =
@@ -94,6 +92,11 @@ let compile_to_be () = (* cwd = root *)
   in
   let add b df =
     Outils.exists_chk df ;
+    let dir = ref (df |> Filename.dirname |> Outils.np) in
+    if b then begin while not (Tree.mem_d !dir) do 
+      Outils.append d_to_cr !dir ;
+      dir := (!dir |> Filename.dirname |> Outils.np)
+    done end ;
     add_d_or_f b df 
   in
 

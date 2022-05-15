@@ -43,20 +43,11 @@ let append rl x =
   rl := x :: !rl
 let extend rl l =
   rl := l @ !rl
-(* ================== *)
 
+let set_of_list l =
+  List.fold_right IdSet.add l IdSet.empty
 
-(* ===== All_fkeys ===== *)
-let print_one_key oc key st =
-  let nb = IdSet.cardinal st in
-  fprintf oc "%s %d " key nb ;
-  IdSet.iter (fprintf oc "%s ") st ;
-  fprintf oc "\n"
-
-let print_tbl_fkeys tbl =
-  let oc = open_out (Filename.concat !dr_files "all_fkeys") in
-  IdMap.iter (print_one_key oc) tbl ;
-  close_out oc
+let short s = (String.sub s 0 4)
 (* ================== *)
 
 
@@ -82,6 +73,21 @@ let safe_realpath path =
   fct () ;
   List.fold_right (fun f d -> Filename.concat d f) !l_path "/"
 (* ================== *)
+
+
+(* ===== Scanf.input_line PARCE QUE PUTAIN CETTE FONCTION N'EXISTE PAS ===== *)
+let scanf_input_line ic =
+  let b = Buffer.create 10 in
+  let c = ref (Scanf.bscanf ic "%c" (fun c->c)) in
+  while !c<>'\n' do
+    Buffer.add_char b !c ;
+    c := Scanf.bscanf ic "%c" (fun c->c) 
+  done ;
+  Buffer.contents b
+
+
+(* ================== *)
+
 
 (* ===== REMOVE / CREATE ===== *)
 let rec remove path = 
@@ -168,6 +174,11 @@ let find_commit br =
   let ic = open_in f in
   Scanf.sscanf (input_line ic) "last commit : %s" 
   (fun s -> close_in ic ; s)
+
+let set_commit br cm =
+  let oc = open_out (Filename.concat !dr_brnch br) in
+  fprintf oc "last commit : %s\n" cm ;
+  close_out oc
 (* ================== *)
 
 
@@ -258,6 +269,11 @@ let load str_h dir oc =
   let ic = open_in_bin file in
   uncompress_opened ic oc
 
+let load_fn str_h dir fn =
+  let oc = open_out fn in
+  load str_h dir oc ;
+  close_out oc
+
 let remove_hash dir str_h =
   let key,rest = cut_sha str_h in
   let subdir = Filename.concat dir key in
@@ -265,6 +281,35 @@ let remove_hash dir str_h =
   Sys.remove file ;
   try Sys.rmdir subdir 
   with | _ (* not empty *) -> ()
+(* ================== *)
+
+
+(* ===== All_fkeys ===== *)
+let print_one_key oc key st =
+  let nb = IdSet.cardinal st in
+  fprintf oc "%s %d " key nb ;
+  IdSet.iter (fprintf oc "%s ") st ;
+  fprintf oc "\n"
+
+let print_tbl_fkeys tbl =
+  let oc = open_out (Filename.concat !dr_files "all_fkeys") in
+  IdMap.iter (print_one_key oc) tbl ;
+  close_out oc
+
+let map_set_add key t tbl = match IdMap.find_opt key tbl with
+  | None    -> IdMap.add key (IdSet.singleton t) tbl
+  | Some st -> IdMap.add key (IdSet.add t st   ) tbl
+
+let map_set_rm  key t tbl = 
+  IdMap.add key (IdSet.remove t (IdMap.find key tbl)) tbl
+
+let flush_tbl_fkeys tbl =
+  let oc = open_out (Filename.concat !dr_files "all_fkeys") in
+  IdMap.iter 
+  (fun key st -> if st = IdSet.empty then remove_hash !dr_files key
+    else print_one_key oc key st
+  ) tbl ;
+  close_out oc
 (* ================== *)
 
 
@@ -280,5 +325,19 @@ let use_graphviz s =
     (Sys.remove _pdf ;
      Sys.remove _dot )
 (* ================== *)
+
+
+(* ===== BRANCH FCT ===== *)
+(* Parce que sinon dépendance cyclique entre les 
+   fichiers branch.ml et branch_mvt.ml *)
+let branch_switch br = 
+  old_br := !branch ;
+  branch := br ;
+  init_file (Filename.concat !dr_brnch "HEAD") (br^"\n")
+
+let branch_switch_former () = branch_switch !old_br
+(* ================== *)
+
+
 
 

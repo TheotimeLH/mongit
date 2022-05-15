@@ -26,6 +26,12 @@ let subparser_branch () =
    ("-graph",
       Unit Branch.cmd_graph ,
       "display a graph of the commits and branches");
+   ("-forward",
+      Int Branch.cmd_forward ,
+      "Move forward the current branch a number of steps");
+   ("-backward",
+      Int Branch.cmd_backward ,
+      "Move backward the current branch a number of steps");
   ]
 
 let () = speclist :=
