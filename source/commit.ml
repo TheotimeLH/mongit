@@ -178,7 +178,7 @@ let cmd_commit () =
     let tmp_file = Filename.concat !dr_comms "tmp_commit_file" in
     let commit_ch = open_out tmp_file in
 
-    let pcommit = Outils.find_commit () in
+    let pcommit = Outils.find_commit !branch in
     (*fprintf commit_ch "\nBranch : %s\n" !branch ;*)
     fprintf commit_ch "Parent commits : %s\n" pcommit ;
 
@@ -206,12 +206,8 @@ let cmd_commit () =
     let oc = open_out (Filename.concat !dr_files "all_fkeys") in
     IdMap.iter 
     (fun key st -> if st = IdSet.empty then end_f_ch key
-      else begin 
-        let nb = IdSet.cardinal st in
-        fprintf oc "%s %d " key nb ;
-        IdSet.iter (fprintf oc "%s ") st ;
-        fprintf oc "\n"
-    end) !tbl_fkeys ;
+      else Outils.print_one_key oc key st
+    ) !tbl_fkeys ;
     close_out oc ;
 
     if not !bool_print_debug then Sys.remove tmp_file ;

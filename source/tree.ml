@@ -200,27 +200,5 @@ let dont_overwrite_chk not_real df =
 (* ================ *)
 
 
-(* ===== COPY ===== *)
-let copy br1 br2 =
-  let op = Outils.sha_name (Outils.with_branch br1 "")
-  and np = Outils.sha_name (Outils.with_branch br2 "") in
-  let rec aux op np dir =
-    let op = Filename.concat !dr_trees op
-    and np = Filename.concat !dr_trees np in
-    let ic = Scanf.Scanning.open_in op
-    and oc = open_out np in
-    try while true do
-      Scanf.bscanf ic "%s %s %s\n" 
-      (fun t bn k -> fprintf oc "%s %s %s\n" t bn
-      (if t="file" then k else (
-       let subdir = Filename.concat dir bn in
-       let np = (Outils.sha_name (Outils.with_branch br2 subdir)) in
-       aux k np subdir; np)))
-    done with | End_of_file -> Scanf.Scanning.close_in ic ; close_out oc
-  in
-  aux op np ""
-
-  (* TODO Dupliquer dans all_fkeys *)
-(* ================ *)
 
 

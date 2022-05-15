@@ -46,6 +46,20 @@ let extend rl l =
 (* ================== *)
 
 
+(* ===== All_fkeys ===== *)
+let print_one_key oc key st =
+  let nb = IdSet.cardinal st in
+  fprintf oc "%s %d " key nb ;
+  IdSet.iter (fprintf oc "%s ") st ;
+  fprintf oc "\n"
+
+let print_tbl_fkeys tbl =
+  let oc = open_out (Filename.concat !dr_files "all_fkeys") in
+  IdMap.iter (print_one_key oc) tbl ;
+  close_out oc
+(* ================== *)
+
+
 (* ===== SAFE REAL PATH ===== *)
 let safe_realpath path =
   let cwd = Unix.getcwd () in
@@ -138,6 +152,7 @@ let root_to_realpath f =
   Filename.concat !Root.root f
 (* ================== *)
 
+
 (* ===== BRANCH ===== *)
 let find_branch () =
   let f = Filename.concat !repo "branches/HEAD" in
@@ -148,8 +163,8 @@ let find_branch () =
 let with_branch br s =
   sprintf "%s:%s" br s
 
-let find_commit () =
-  let f = Filename.concat !dr_brnch !branch in
+let find_commit br =
+  let f = Filename.concat !dr_brnch br in
   let ic = open_in f in
   Scanf.sscanf (input_line ic) "last commit : %s" 
   (fun s -> close_in ic ; s)
