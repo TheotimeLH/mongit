@@ -84,3 +84,8 @@ Si diff de plus de la moitié, on sauvegarde entièrement la nouvelle version
     ET ON DEPLACE DANS L'ARBRE CE QUI Y APPARTIENT (EN GROS MV + MV TREE)
     EN REVANCHE SI NOT_REAL ALORS QUE MV_TREE ET DANS CE CAS ON BOUGE
     QUE CE QU'ON LIT DANS LE TREE.
+
+
+
+
+probleme avec all_fkeys si deux fichiers différents sont identiques

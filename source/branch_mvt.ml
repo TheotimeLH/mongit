@@ -98,7 +98,7 @@ let forward branch cm_sha =
   let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
   Outils.load_fn cm_sha !dr_comms tmp_commit ;
   let cch = Scanf.Scanning.open_in tmp_commit in
-  Scanf.bscanf cch "Parent commits : %_d %_s\n" () ;
+  Scanf.bscanf cch "Parent commits : %_d %_s\n" () ; (* tmp car pas de merge *)
   let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
   for _ = 1 to nb_op do
     Scanf.bscanf cch "%s %s "

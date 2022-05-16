@@ -55,7 +55,20 @@ let create br1 new_br =
 
 let cmd_create new_br =
   Outils.init () ;
+  if new_br = "tmp_for_merge" then
+    ( eprintf "Sorry \"tmp_for_merge\" is a special branch name.\n" ; exit 1) ;
   create !branch new_br
+(* ================= *)
+
+
+(* ===== DELETE ===== *)
+(* Commande uniquement utilisé en interne pour supprimer des branches tmp.
+   Pourrait causer de très gros dégats. *)
+let delete br =
+  Tree.erase (Outils.sha_name (Outils.with_branch br "")) ;
+      (Tree.load_tbl_fkeys ())
+  |>  (IdMap.map (fun st -> IdSet.remove br st))
+  |>  (Outils.flush_tbl_fkeys)
 (* ================= *)
 
 
@@ -84,12 +97,14 @@ let make_commit_graph commits =
     let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
     Outils.load_fn cm !dr_comms tmp_commit ;
     let ic = Scanf.Scanning.open_in tmp_commit in
-    let list_pcm = Scanf.bscanf ic "Parent commits : %d " 
-    (fun n -> let l = ref [] in
-      for _ = 1 to n do 
-        Scanf.bscanf ic "%s " (Outils.append l)
-      done ; !l
-    ) in
+    let list_pcm =
+    Scanf.bscanf ic "%s\n" ( function 
+      | "SIMPLE" -> 
+        Scanf.bscanf ic "Parent commit : %s\n" (fun pcm -> [pcm])
+      | "MERGE"  -> 
+        Scanf.bscanf ic "Parent commits : %s and %s ; ancestor %_s\n"
+          (fun pcm1 pcm2 -> [pcm1;pcm2]))
+    in
     Scanf.Scanning.close_in ic ;
     Outils.remove tmp_commit ;
     (IdMap.add cm (Outils.set_of_list list_pcm) g1  ,
@@ -103,9 +118,9 @@ let cmd_graph () =
   fprintf oc "digraph branches_graph{\nrankdir=LR;\n" ;
   let commits = Outils.list_sha !dr_comms in
   let gr = fst (make_commit_graph commits) in
-  let n = List.length commits in
+  let n = ref (List.length commits) in
   let tbl_num = ref (IdMap.singleton "none" n) in
-  fprintf oc "%d [label=\"\"];\n" n ; (* tmp *)
+  fprintf oc "%d [label=\"\"];\n" !n ; (* tmp *)
 
   (* == COMMITS == *)
   List.iteri (fun i cm -> tbl_num := IdMap.add cm i !tbl_num) commits ;
@@ -113,10 +128,18 @@ let cmd_graph () =
   (fun cm ->
     let num = IdMap.find cm !tbl_num in
     fprintf oc "%d [label=\"\"];\n" num ; (* tmp *)
-    IdSet.iter 
-    (fun pcm -> fprintf oc "%d -> %d [label=\"%s\"];\n" 
-      (IdMap.find pcm !tbl_num) num (Outils.short cm)
-    ) (IdMap.find cm gr)
+    match IdSet.elements (IdMap.find cm gr) with
+    | [pcm] -> 
+        fprintf oc "%d -> %d [label=\"%s\"];\n"
+        (IdMap.find pcm !tbl_num) num (Outils.short cm)
+    | [pcm1;pcm2] ->
+        let pnum1 = IdMap.find pcm1 !tbl_num
+        and pnum2 = IdMap.find pcm2 !tbl_num in
+        incr n ;
+        fprintf oc "%d [label=\"\",shape=point];" !n ;
+        fprintf oc "%d -> %d; %d -> %d;" pnum1 !n pnum2 !n ;
+        fprintf oc "%d -> %d [label=\"%s\"];\n" !n num (Outils.short cm)
+    | [] -> failwith "nombre impossible de pcommits"
   ) commits ;
 
   (* == BRANCHES == *)
@@ -144,7 +167,7 @@ let cmd_graph () =
 (* ===== FORWARD / BACKWARD ====== *)
 let move_forward br nb_pas =
   let commits = Outils.list_sha !dr_comms in
-  let gr = fst (make_commit_graph commits) in
+  let gr = snd (make_commit_graph commits) in
   let mvt_fct = Branch_mvt.forward in
   let cm = ref (Outils.find_commit br) in
   for _ = 1 to nb_pas do

@@ -122,11 +122,14 @@ let enumerate_unk df = (* -> dir list * file list *)
     if is_f then ([],[(df,key)])
     else enumerate df key
 
-let load_tbl_files () =
-  List.fold_left
-    (fun tbl (f,key) -> IdMap.add f key tbl)
-    IdMap.empty
-    (enumerate_unk "" |> snd)
+let enumerate_all_set br =
+  Outils.branch_switch br ;
+  let ld,lf = enumerate_unk "" in
+  Outils.branch_switch_former () ;
+  ( Outils.set_of_list ld , Outils.map_of_list lf)
+
+let load_tbl_files () = 
+  Outils.map_of_list (enumerate_unk "" |> snd)
 
 
 let load_tbl_fkeys () =

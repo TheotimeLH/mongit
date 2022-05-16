@@ -47,6 +47,12 @@ let extend rl l =
 let set_of_list l =
   List.fold_right IdSet.add l IdSet.empty
 
+let map_of_list l =
+  List.fold_left
+    (fun tbl (f,key) -> IdMap.add f key tbl)
+    IdMap.empty
+    l
+
 let short s = (String.sub s 0 4)
 (* ================== *)
 
@@ -223,8 +229,10 @@ let list_sha dir =
   let l = ref [] in
   Array.iter 
   ( fun sub -> 
-    let af = Sys.readdir (Filename.concat dir sub) in
-    Array.iter (fun k -> append l (sub ^ k)) af 
+    let subdir = Filename.concat dir sub in
+    if Sys.is_directory subdir then (
+    let af = Sys.readdir subdir in
+    Array.iter (fun k -> append l (sub ^ k)) af )
   ) asubdir ;
   !l
 (* ================== *)
@@ -331,11 +339,17 @@ let use_graphviz s =
 (* Parce que sinon dépendance cyclique entre les 
    fichiers branch.ml et branch_mvt.ml *)
 let branch_switch br = 
-  old_br := !branch ;
+  append list_old_br !branch ;
   branch := br ;
   init_file (Filename.concat !dr_brnch "HEAD") (br^"\n")
 
-let branch_switch_former () = branch_switch !old_br
+let branch_switch_former () = match !list_old_br with
+  | [] -> eprintf "ERROR : pas de branche précédente pour switch_former\n" ; 
+          raise Mg_error
+  | br :: q ->
+      branch := br ;
+      init_file (Filename.concat !dr_brnch "HEAD") (br^"\n") ;
+      list_old_br := q
 (* ================== *)
 
 

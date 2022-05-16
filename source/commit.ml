@@ -157,7 +157,7 @@ let compile_commit () = (* -> sha du commit *)
     let cch = open_out tmp_file in
 
     let pcommit = Outils.find_commit !branch in
-    fprintf cch "Parent commits : 1 %s\n" pcommit ;
+    fprintf cch "SIMPLE\nParent commit : %s\n" pcommit ;
     fprintf cch "Nb operations : %d\n" (nb_f_tree+nb_d_tree-nb_nothing) ;
 
     List.iter (do_d_cr cch) d_to_cr ;
