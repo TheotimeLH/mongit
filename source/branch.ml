@@ -39,8 +39,12 @@ let copy_tree br1 br2 =
   aux op np ""
 
 let duplicate_keys br1 br2 = (*-> files/all_fkeys*)
-  let tbl_fkeys = Tree.load_tbl_fkeys () in
-  let fct = (fun st -> if IdSet.mem br1 st then IdSet.add br2 st else st) in
+  let tbl_fkeys = Outils.load_tbl_fkeys () in
+  let rec fct = function
+    | [] -> []
+    | h::q when h=br1 -> br2 :: h :: (fct q)
+    | h::q -> h :: (fct q)
+  in
   let new_tbl = IdMap.map fct tbl_fkeys in
   Outils.print_tbl_fkeys new_tbl
 
@@ -66,8 +70,8 @@ let cmd_create new_br =
    Pourrait causer de très gros dégats. *)
 let delete br =
   Tree.erase (Outils.sha_name (Outils.with_branch br "")) ;
-      (Tree.load_tbl_fkeys ())
-  |>  (IdMap.map (fun st -> IdSet.remove br st))
+      (Outils.load_tbl_fkeys ())
+  |>  (IdMap.map (Outils.list_rm br))
   |>  (Outils.flush_tbl_fkeys)
 (* ================= *)
 

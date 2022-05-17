@@ -2,11 +2,14 @@ open Root
 open Printf
 
 (* 
-   Structure d'un fichier de commit de merge, on renvoie 2 commit :
-   L'un destiné à la branche 1, comment passer de 1 à merge, et l'autre
-   pour la 2. Ainsi suivre un merge c'est exactement un forward ou un backward
-   dans l'une des deux branches. Une fois les deux fichiers de commits produits,
-   tout se passe comme si il y avait juste 2 commits simple.
+   Structure d'un fichier de commit de merge, on renvoie 3 commits :
+   - L'un destiné à la branche 1, comment passer de 1 à merge, et l'autre
+     pour la 2. Ainsi suivre un merge c'est exactement un forward ou un backward
+     dans l'une des deux branches. Une fois les deux fichiers de commits produits,
+     tout se passe comme si il y avait juste 2 commits simples.
+   - Le troisième commit fait la synthèse pour aider à la compréhension
+     pour branch_graph. Il synthètise en enregistrant les SHA des commits enjeux.
+     Dans les faits il ne contient aucune information indispensable.
 
    Pour travailler on distingue 4 sous-commits :
   auto_1) 
@@ -42,17 +45,31 @@ open Printf
 
 (* ============================================================= *)
 (* Demande à l'user quoi faire si créé 1&2 mais différents *)
-let chose_cr (fn,k1,k2) = (* -> bool : vrai si choisi 1 / faux sinon *)
+let chose_cr_cr (fn,k1,k2) = (* -> bool : vrai si choisi 1 / faux sinon *)
   (* TODO : moins binaire dans le choix, 
      scan les fichiers et demande point par point *)
   printf "==========================\n" ;
-  printf "Conflit, both create %s: Do you prefer OPTION 1 :\n" fn ;
+  printf "CONFLIT : both create %s: Do you prefer OPTION 1 :\n" fn ;
   printf "==========================\n" ;
   Outils.load k1 !dr_files stdout ;
   printf "==========================\n" ;
   printf "or OPTION 2 :\n" ;
   Outils.load k2 !dr_files stdout ;
   printf "==========================\n" ;
+  printf " \"1\" or \"2\" ?\n" ;
+  let rep = ref "" in
+  while !rep<>"2" && !rep<>"1" do rep := read_line () done ;
+  !rep = "1" (*:bool*)
+
+(* Demande si l'un a suppr et l'autre à modifié *)
+let chose_rm_ch br_rm br_ch (fn,k) =
+  printf "==========================\n" ;
+  printf "CONFLIT : %s has been deleted in branch %s \
+    and modified in branch %s :\n" fn br_rm br_ch ;
+  printf "==========================\n" ;
+  Outils.load k !dr_files stdout ;
+  printf "==========================\n" ;
+  printf " \"1\" to remove or \"2\" to change ?\n" ;
   let rep = ref "" in
   while !rep<>"2" && !rep<>"1" do rep := read_line () done ;
   !rep = "1" (*:bool*)
@@ -67,12 +84,12 @@ let scan_double_ch (fn,ka,k1,k2) = () (* TODO *)
 (* ============================================================= *)
 (* La fonction qui fait le boulot : - équivalent de pre_commit.ml *)
 let scan_merge br1 br2 br_anc = 
-  (* Etape 0 : Énumération *)
+  (* ETAPE 0 : Énumération *)
   let st_d1 ,tbl_f1 = Tree.enumerate_all br1
   and st_d2 ,tbl_f2 = Tree.enumerate_all br2
   and st_da ,tbl_fa = Tree.enumerate_all br_anc in
  
-  (* Etape 1 : Repérer les changements *)
+  (* ETAPE 1 : Repérer les changements *)
   let l_d_1cr_2x  = ref [] and l_d_1x_2cr  = ref [] 
   and l_d_1rm_2x  = ref [] and l_d_1x_2rm  = ref []
   and l_f_1cr_2x  = ref [] and l_f_1x_2cr  = ref [] 
@@ -107,39 +124,89 @@ let scan_merge br1 br2 br_anc =
           (IdMap.find_opt fn tbl_f1),
           (IdMap.find_opt fn tbl_f1) with
   | Some ka , Some k1 , None    when ka=k1  -> Outils.append l_f_1x_2rm  (fn,k1)
-  | Some ka , Some k1 , None                -> Outils.append l_f_1ch_2rm (fn,k1)
+  | Some ka , Some k1 , None                -> Outils.append l_f_1ch_2rm (fn,k1) (**)
   | Some ka , None    , Some k2 when ka=k2  -> Outils.append l_f_1rm_2x  (fn,k2)
-  | Some ka , None    , Some k2             -> Outils.append l_f_1rm_2ch (fn,k2)
+  | Some ka , None    , Some k2             -> Outils.append l_f_1rm_2ch (fn,k2) (**)
   | None    , Some k1 , None                -> Outils.append l_f_1cr_2x  (fn,k1)
   | None    , None    , Some k2             -> Outils.append l_f_1x_2cr  (fn,k2)
   | None    , Some k1 , Some k2 when k1<>k2 -> Outils.append l_f_1cr_2cr (fn,k1,k2) (**)
-  | Some ka , Some k1 , Some k2 when k1=ka && ka<>k2 -> Outils.append l_f_1x_2ch  (fn,k2)
-  | Some ka , Some k1 , Some k2 when k2=ka && ka<>k1 -> Outils.append l_f_1ch_2x  (fn,k1)
-  | Some ka , Some k1 , Some k2 when k1<>ka && k2<>ka && k1<>k2 -> Outils.append l_f_1ch_2ch (fn,ka,k1,k2) (**)
+  | Some ka , Some k1 , Some k2 when k1=ka && ka<>k2 -> Outils.append l_f_1x_2ch (fn,ka,k2)
+  | Some ka , Some k1 , Some k2 when k2=ka && ka<>k1 -> Outils.append l_f_1ch_2x (fn,ka,k1)
+  | Some ka , Some k1 , Some k2 when k1<>ka && k2<>ka && k1<>k2 
+    -> Outils.append l_f_1ch_2ch (fn,ka,k1,k2) (**)
   | _ , _ , _ -> ()
   ) all_files ;
 
-  let l_chose1_cr,l_chose2_cr = List.partition chose_cr !l_f_1cr_2cr in
-  Outils.extend l_f_1cr_2x (List.map (fun (fn,k1,k2) -> (fn,k1))) l_chose1_cr ;
-  Outils.extend l_f_1rm_2x (List.map (fun (fn,k1,k2) -> (fn,k2))) l_chose1_cr ;
-  Outils.extend l_f_1x_2cr (List.map (fun (fn,k1,k2) -> (fn,k2))) l_chose2_cr ;
-  Outils.extend l_f_1x_2rm (List.map (fun (fn,k1,k2) -> (fn,k1))) l_chose2_cr ;
+
+  (* ETAPE 2 : Résolution des conflits *)
+  let l_chose1,l_chose2 = List.partition chose_cr_cr !l_f_1cr_2cr in
+  Outils.extend l_f_1cr_2x (List.map (fun (fn,k1,k2) -> (fn,k1)) l_chose1_cr) ;
+  Outils.extend l_f_1rm_2x (List.map (fun (fn,k1,k2) -> (fn,k2)) l_chose1_cr) ;
+  Outils.extend l_f_1x_2cr (List.map (fun (fn,k1,k2) -> (fn,k2)) l_chose2_cr) ;
+  Outils.extend l_f_1x_2rm (List.map (fun (fn,k1,k2) -> (fn,k1)) l_chose2_cr) ;
+
+  let l_chose_rm1,l_chose_ch2 = List.partition chose_cr_rm !l_f_1rm_2ch in 
+  let l_chose_rm2,l_chose_ch1 = List.partition chose_cr_rm !l_f_1ch_2rm in 
+  Outils.extend l_f_1rm_2x l_chose_rm1 ;
+  Outils.extend l_f_1x_2cr l_chose_ch2 ;
+  Outils.extend l_f_1x_2rm l_chose_rm2 ;
+  Outils.extend l_f_1cr_2x l_chose_ch1 ;
 
   (* TODO *)
   ignore (List.map scan_double_ch !l_f_1ch_2ch) ; 
+
+  (* RETURN, il n'y a plus de conflits : *) 
+  !l_d_1cr_2x , !l_d_1x_2cr ,
+  !l_d_1rm_2x , !l_d_1x_2rm ,
+  !l_f_1cr_2x , !l_f_1x_2cr ,
+  !l_f_1rm_2x , !l_f_1x_2rm ,
+  !l_f_1ch_2x , !l_f_1x_2ch 
   
 (* ============================================================= *)
 
-(* La fonction qui print les commits : - équivalent de commit.ml *)
+(* La fonction qui print les 3 commits *)
 let print_merge br1 cm1 br2 cm2 br_anc cm_anc = 
-  let tmp_file = Filename.concat !dr_comms "tmp_commit_file" in
+  let tmp_file = Filename.concat !dr_comms "tmp_commit_merge_file" in
   let cch = open_out tmp_file in
   fprintf cch "MERGE\nParent commits : %s and %s ; ancestor %s\n" cm1 cm2 cm_anc ;
+  let l_d_1cr_2x , l_d_1x_2cr ,
+      l_d_1rm_2x , l_d_1x_2rm ,
+      l_f_1cr_2x , l_f_1x_2cr ,
+      l_f_1rm_2x , l_f_1x_2rm ,
+      l_f_1ch_2x , l_f_1x_2ch = scan_merge br1 br2 br_anc in
+
+  let msg1 = sprintf "Resulting 1 of the merge of %s and %s.\n" cm1 cm2 in
+  let sha1 =
+  Commit.print_commit msg1 cm1
+    l_d_1x_2cr [] l_d_1x_2rm
+    [] [] [] l_f_1x_2rm
+    l_f_1x_2cr l_f_1x_2ch
+  in
+
+  let msg2 = sprintf "Resulting 2 of the merge of %s and %s.\n" cm1 cm2 in
+  let sha2 =
+  Commit.print_commit msg2 cm2
+    l_d_1cr_2x [] l_d_1rm_2x
+    [] [] [] l_f_1rm_2x
+    l_f_1cr_2x l_f_1ch_2x
+  in
+
+  fprintf cch "Resulting 1 : %s\nResulting 2 : %s\n" sha1 sha2 ;
+
+  close_out cch ;
+  Outils.store tmp_file !dr_comms ;
+  if not !bool_print_debug then Sys.remove tmp_file ;
+  ( sha1 , sha2 )
+    
+(* ============================================================= *)
+  
+  
 (* ============================================================= *)
 
 let cmd_merge l =
   (* ETAPE 0 : Initialisation *)
   Outils.init () ;
+  Outils.rootwd () ;
   let br1,br2 = match l with
   | [br1;br2] -> br1,br2
   | _ -> eprintf "Syntax error on the merge cmd, use : \
@@ -211,8 +278,11 @@ let cmd_merge l =
   let br_tmp = "tmp_for_merge" in
   Branch.create !br_pp br_tmp ;
   List.iter (Branch_mvt.backward br_tmp) !chemin_acc ;
-  merge br1 br2 br_tmp ;
-  Branch.delete br_tmp
+  let (sha1,sha2) = print_merge br1 cm1 br2 cm2 br_tmp !cm_anc in
+  Branch_mvt.forward br1 sha1 ;
+  Branch_mvt.forward br2 sha2 ;
+  Branch.delete br_tmp ;
+  Outils.realwd ()
   
 
 

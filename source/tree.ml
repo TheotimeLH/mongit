@@ -131,21 +131,6 @@ let enumerate_all_set br =
 let load_tbl_files () = 
   Outils.map_of_list (enumerate_unk "" |> snd)
 
-
-let load_tbl_fkeys () =
-  let ic = Scanf.Scanning.open_in (Filename.concat !dr_files "all_fkeys") in
-  let tbl = ref IdMap.empty in
-  begin try while true do
-    Scanf.bscanf ic "%s %d "
-    (fun key nb ->
-      let st = ref IdSet.empty in
-      for _ = 1 to nb do
-        Scanf.bscanf ic "%s " 
-        (fun br -> st := IdSet.add br !st)
-      done ;
-      tbl := IdMap.add key !st !tbl)
-  done with | End_of_file -> Scanf.Scanning.close_in ic end ;
-  !tbl
 (* ================ *)
 
 

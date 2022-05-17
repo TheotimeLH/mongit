@@ -19,6 +19,11 @@ let rec list_rm_fst_occ x = function
   | [] -> []
   | h::q -> if x=h then q else h::list_rm_fst_occ x q
 
+let rec list_rm x = function
+  | [] -> []
+  | h::q when x<>h ->h :: (list_rm x q)
+  | _::q -> list_rm x q
+
 let readlines f =
   let ic = open_in f in
   let l = ref [] in
@@ -54,6 +59,20 @@ let map_of_list l =
     l
 
 let short s = (String.sub s 0 4)
+
+let map_set_add key t tbl = match IdMap.find_opt key tbl with
+  | None    -> IdMap.add key (IdSet.singleton t) tbl
+  | Some st -> IdMap.add key (IdSet.add t st   ) tbl
+
+let map_set_rm  key t tbl = 
+  IdMap.add key (IdSet.remove t (IdMap.find key tbl)) tbl
+
+let map_list_add key t tbl = match IdMap.find_opt key tbl with
+  | None    -> IdMap.add key [t] tbl
+  | Some l -> IdMap.add key (t::l) tbl 
+
+let map_list_rm  key t tbl =
+  IdMap.add key (list_rm_fst_occ t (IdMap.find key tbl)) tbl
 (* ================== *)
 
 
@@ -265,10 +284,14 @@ let uncompress infile outfile =
 let store f dir =
   let key,rest = mksha f |> cut_sha in
   let subdir = Filename.concat dir key in
-  if not (Sys.file_exists subdir)
-    then Sys.mkdir subdir Root.mkdir_num ;
-  let out = Filename.concat subdir rest in
-  compress f out
+  if not (Sys.file_exists subdir) 
+  || not (Array.mem rest (Sys.readdir subdir))
+  then begin
+    if not (Sys.file_exists subdir)
+      then Sys.mkdir subdir Root.mkdir_num ;
+    let out = Filename.concat subdir rest in
+    compress f out
+  end
 
 let load str_h dir oc =
   let key,rest = cut_sha str_h in
@@ -293,29 +316,34 @@ let remove_hash dir str_h =
 
 
 (* ===== All_fkeys ===== *)
-let print_one_key oc key st =
-  let nb = IdSet.cardinal st in
-  fprintf oc "%s %d " key nb ;
-  IdSet.iter (fprintf oc "%s ") st ;
-  fprintf oc "\n"
+let load_tbl_fkeys () =
+  let ic = Scanf.Scanning.open_in (Filename.concat !dr_files "all_fkeys") in
+  let tbl = ref IdMap.empty in
+  begin try while true do
+    Scanf.bscanf ic "%s %d "
+    (fun key nb ->
+      let l = ref [] in
+      for _ = 1 to nb do 
+        Scanf.bscanf ic "%s " (append l) 
+      done ;
+      tbl := IdMap.add key !l !tbl)
+  done with | End_of_file -> Scanf.Scanning.close_in ic end ;
+  !tbl
+
+let print_one_key oc key l =
+  fprintf oc "%s %d %s \n" key 
+  (List.length l) (String.concat " " l)
 
 let print_tbl_fkeys tbl =
   let oc = open_out (Filename.concat !dr_files "all_fkeys") in
   IdMap.iter (print_one_key oc) tbl ;
   close_out oc
-
-let map_set_add key t tbl = match IdMap.find_opt key tbl with
-  | None    -> IdMap.add key (IdSet.singleton t) tbl
-  | Some st -> IdMap.add key (IdSet.add t st   ) tbl
-
-let map_set_rm  key t tbl = 
-  IdMap.add key (IdSet.remove t (IdMap.find key tbl)) tbl
-
+  
 let flush_tbl_fkeys tbl =
   let oc = open_out (Filename.concat !dr_files "all_fkeys") in
   IdMap.iter 
-  (fun key st -> if st = IdSet.empty then remove_hash !dr_files key
-    else print_one_key oc key st
+  (fun key l -> if l=[] then remove_hash !dr_files key
+    else print_one_key oc key l
   ) tbl ;
   close_out oc
 (* ================== *)
