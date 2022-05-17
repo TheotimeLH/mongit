@@ -95,24 +95,30 @@ let do_f_mi f old_key new_key nb_chg cch fw =
 let forward branch cm_sha =
   Outils.branch_switch branch ;
   tbl_fkeys := Tree.load_tbl_fkeys () ;
+
   let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
   Outils.load_fn cm_sha !dr_comms tmp_commit ;
   let cch = Scanf.Scanning.open_in tmp_commit in
-  Scanf.bscanf cch "Parent commits : %_d %_s\n" () ; (* tmp car pas de merge *)
-  let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
-  for _ = 1 to nb_op do
-    Scanf.bscanf cch "%s %s "
-    (fun a b -> match a,b with
-    | "CREATE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_cr
-    | "CREATE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_cr
-    | "MOVE"  ,"DIR"     -> Scanf.bscanf cch "%s %s\n"    do_d_mv
-    | "MOVE"  ,"FILE"    -> Scanf.bscanf cch "%s %s %s\n" do_f_mv
-    | "REMOVE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_rm
-    | "REMOVE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_rm
-    | "MODIF" ,"REBUILT" -> Scanf.bscanf cch "%s %s %s\n" do_f_rb
-    | _,_-> Scanf.bscanf cch "%s %s %s %d\n" (*"MODIF""MINOR"*)   
-      (fun f okey nkey nb_chg -> do_f_mi f okey nkey nb_chg cch true))
-  done ;
+
+  Scanf.bscanf cch "%s\n" ( function
+    | "MERGE"  -> () (* rien à faire pour forward un tampon *)
+    | "SIMPLE" -> 
+      Scanf.bscanf cch "Parent commit : %_s\n" () ;
+      let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
+      for _ = 1 to nb_op do
+        Scanf.bscanf cch "%s %s "
+        (fun a b -> match a,b with
+        | "CREATE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_cr
+        | "CREATE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_cr
+        | "MOVE"  ,"DIR"     -> Scanf.bscanf cch "%s %s\n"    do_d_mv
+        | "MOVE"  ,"FILE"    -> Scanf.bscanf cch "%s %s %s\n" do_f_mv
+        | "REMOVE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_rm
+        | "REMOVE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_rm
+        | "MODIF" ,"REBUILT" -> Scanf.bscanf cch "%s %s %s\n" do_f_rb
+        | _,_-> Scanf.bscanf cch "%s %s %s %d\n" (*"MODIF""MINOR"*)   
+          (fun f okey nkey nb_chg -> do_f_mi f okey nkey nb_chg cch true))
+      done
+  ) ;
   Scanf.Scanning.close_in cch ;
   Outils.flush_tbl_fkeys !tbl_fkeys ;
   Outils.remove tmp_commit ;
@@ -128,30 +134,40 @@ let forward branch cm_sha =
 let backward branch cm_sha =
   Outils.branch_switch branch ;
   tbl_fkeys := Tree.load_tbl_fkeys () ;
+
   let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
   Outils.load_fn cm_sha !dr_comms tmp_commit ;
   let cch = Scanf.Scanning.open_in tmp_commit in
-  let pcommit = (*Pour le moment, car pas de merge*)
-    Scanf.bscanf cch "Parent commits : 1 %s\n" (fun s -> s) in
-  let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
-  for _ = 1 to nb_op do
-    Scanf.bscanf cch "%s %s "
-    (fun a b -> match a,b with
-    | "CREATE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_rm
-    | "CREATE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_rm
-    | "MOVE"  ,"DIR"     -> Scanf.bscanf cch "%s %s\n"    (fun op np -> do_d_mv np op)
-    | "MOVE"  ,"FILE"    -> Scanf.bscanf cch "%s %s %s\n" (fun op np key -> do_f_mv np op key)
-    | "REMOVE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_cr
-    | "REMOVE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_cr
-    | "MODIF" ,"REBUILT" -> Scanf.bscanf cch "%s %s %s\n" (fun f ok nk -> do_f_rb f nk ok)
-    | _,_-> Scanf.bscanf cch "%s %s %s %d\n" (*"MODIF""MINOR"*)   
-      (fun f okey nkey nb_chg -> do_f_mi f nkey okey nb_chg cch false))
-  done ;
+
+  let pcommit = 
+  Scanf.bscanf cch "%s\n" ( function
+    | "MERGE"  -> "commit_absurde"
+      (* Rien à faire pour backward un tampon. Normalement un tel mvt
+         sera toujours suivi d'un second backward pour choisir la 
+         résultante. Mais puisqu'il faut donner un pcommit, je prends
+         "commit_absurde" pour faire crash si on n'a pas sur-backward. *)
+    | "SIMPLE" -> 
+      let pcommit = Scanf.bscanf cch "Parent commit : %_s\n" () in
+      let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
+      for _ = 1 to nb_op do
+        Scanf.bscanf cch "%s %s "
+        (fun a b -> match a,b with
+        | "CREATE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_rm
+        | "CREATE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_rm
+        | "MOVE"  ,"DIR"     -> Scanf.bscanf cch "%s %s\n"    (fun op np -> do_d_mv np op)
+        | "MOVE"  ,"FILE"    -> Scanf.bscanf cch "%s %s %s\n" (fun op np key -> do_f_mv np op key)
+        | "REMOVE","DIR"     -> Scanf.bscanf cch "%s\n"       do_d_cr
+        | "REMOVE","FILE"    -> Scanf.bscanf cch "%s %s\n"    do_f_cr
+        | "MODIF" ,"REBUILT" -> Scanf.bscanf cch "%s %s %s\n" (fun f ok nk -> do_f_rb f nk ok)
+        | _,_-> Scanf.bscanf cch "%s %s %s %d\n" (*"MODIF""MINOR"*)   
+          (fun f okey nkey nb_chg -> do_f_mi f nkey okey nb_chg cch false))
+      done )
+  in
   Scanf.Scanning.close_in cch ;
   Outils.flush_tbl_fkeys !tbl_fkeys ;
   Outils.remove tmp_commit ;
   Outils.set_commit branch pcommit ;
   Outils.branch_switch_former () ;
-  print_detail "Forward : branch %s -> %s\n" branch cm_sha
+  print_detail "Backward : branch %s -> %s\n" branch cm_sha
 (* ========================== *)
 

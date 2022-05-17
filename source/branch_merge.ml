@@ -165,10 +165,7 @@ let scan_merge br1 br2 br_anc =
 (* ============================================================= *)
 
 (* La fonction qui print les 3 commits *)
-let print_merge br1 cm1 br2 cm2 br_anc cm_anc = 
-  let tmp_file = Filename.concat !dr_comms "tmp_commit_merge_file" in
-  let cch = open_out tmp_file in
-  fprintf cch "MERGE\nParent commits : %s and %s ; ancestor %s\n" cm1 cm2 cm_anc ;
+let print_merge br1 cm1 br2 cm2 br_anc = 
   let l_d_1cr_2x , l_d_1x_2cr ,
       l_d_1rm_2x , l_d_1x_2rm ,
       l_f_1cr_2x , l_f_1x_2cr ,
@@ -191,12 +188,14 @@ let print_merge br1 cm1 br2 cm2 br_anc cm_anc =
     l_f_1cr_2x l_f_1ch_2x
   in
 
-  fprintf cch "Resulting 1 : %s\nResulting 2 : %s\n" sha1 sha2 ;
-
+  let tmp_file = Filename.concat !dr_comms "tmp_commit_merge_file" in
+  let cch = open_out tmp_file in
+  fprintf cch "MERGE\nResulting commits : %s and %s\n" sha1 sha2 ;
   close_out cch ;
   Outils.store tmp_file !dr_comms ;
+  let sha = Outils.mksha tmp_file in
   if not !bool_print_debug then Sys.remove tmp_file ;
-  ( sha1 , sha2 )
+  ( sha1 , sha2 , sha )
     
 (* ============================================================= *)
   
@@ -278,9 +277,11 @@ let cmd_merge l =
   let br_tmp = "tmp_for_merge" in
   Branch.create !br_pp br_tmp ;
   List.iter (Branch_mvt.backward br_tmp) !chemin_acc ;
-  let (sha1,sha2) = print_merge br1 cm1 br2 cm2 br_tmp !cm_anc in
-  Branch_mvt.forward br1 sha1 ;
+  let (sha1,sha2,sha) = print_merge br1 cm1 br2 cm2 br_tmp in
+  Branch_mvt.forward br1 sha1 ; (* vrai travail *)
   Branch_mvt.forward br2 sha2 ;
+  Branch_mvt.forward br1 sha ; (* pour clarifier le graphe *)
+  Branch_mvt.forward br2 sha ;
   Branch.delete br_tmp ;
   Outils.realwd ()
   
