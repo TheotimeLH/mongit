@@ -115,10 +115,10 @@ let make_commit_graph commits =
       | "SIMPLE" -> 
         Scanf.bscanf ic "Parent commit : %s\n" (fun pcm -> [pcm]) ,
         tbl_to_merge
-      | "MERGE"  ->  
+      | _(*MERGE*)  ->  
         Scanf.bscanf ic "Resulting commits : %s and %s\n"
         (fun rcm1 rcm2 -> [rcm1;rcm2] ,
-          tbl_to_merge |> (IdMap.add pcm1 cm) |> (IdMap.add pcm2 cm)))
+          tbl_to_merge |> (IdMap.add rcm1 cm) |> (IdMap.add rcm2 cm)))
     in
     Scanf.Scanning.close_in ic ;
     Outils.remove tmp_commit ;
@@ -146,10 +146,10 @@ let cmd_graph () =
   let tbl_num_cm , tbl_num_mg =
     List.fold_left
     (fun (tbl_cm,tbl_mg) cm -> 
-      match IdMap.find cm tbl_to_merge with
+      match IdMap.find_opt cm tbl_to_merge with
       | None -> incr n ; (IdMap.add cm !n tbl_cm,tbl_mg)
       | Some cmm -> 
-          begin match IdMap.find cmm tbl_mg with
+          begin match IdMap.find_opt cmm tbl_mg with
           | None -> incr n ; (tbl_cm,IdMap.add cmm !n tbl_mg) 
           | Some _ -> (tbl_cm,tbl_mg) end
     ) (IdMap.singleton "none" 0, IdMap.empty) commits
@@ -160,12 +160,12 @@ let cmd_graph () =
   List.iter
   (fun cm ->
     let num =
-      match IdMap.find cm tbl_to_merge with
+      match IdMap.find_opt cm tbl_to_merge with
       | None -> IdMap.find cm tbl_num_cm 
       | Some cmm -> IdMap.find cmm tbl_num_mg
     in
     fprintf oc "%d [label=\"\"];\n" num ; (* tmp *)
-    match IdSet.elements (IdMap.find cm gr) with
+    match IdSet.elements (IdMap.find cm gup) with
     | [pcm] -> 
         fprintf oc "%d -> %d [label=\"%s\"];\n"
         (IdMap.find pcm tbl_num_cm) num (Outils.short cm)
@@ -173,7 +173,7 @@ let cmd_graph () =
         let num_dot = IdMap.find cm tbl_num_mg in
         fprintf oc "%d [label=\"\",shape=point];" num_dot ;
         fprintf oc "%d -> %d [label=\"%s\"];\n" num_dot num (Outils.short cm) ;
-    | [] -> failwith "nombre impossible de pcommits"
+    | _ -> failwith "nombre impossible de pcommits"
   ) commits ;
 
   (* == BRANCHES == *)
@@ -237,8 +237,7 @@ let move_forward br nb_pas =
 (* ===== BACKWARD ====== *)
 let move_backward br nb_pas = (* Pas encore de merge, donc simple *)
   let commits = Outils.list_sha !dr_comms in
-  let gup,_,tbl_to_merge = make_commit_graph commits in
-  let merges = Outils.set_of_list (snd (IdMap.bindings tbl_to_merge)) in
+  let gup,_,_ = make_commit_graph commits in
   let cm = ref (Outils.find_commit br) in
 
   for _ = 1 to nb_pas do
@@ -248,8 +247,7 @@ let move_backward br nb_pas = (* Pas encore de merge, donc simple *)
     | Some st -> st in
 
     match IdSet.elements st_prev with
-    | [] -> () (*none commit*)
-    | [cm_prev] -> Branch_mvt.backward br cm ; cm := cm_next
+    | [cm_prev] -> Branch_mvt.backward br !cm ; cm := cm_prev
     | [sha1;sha2] -> printf
       "\"%s...\" is a merge commit, to move backward branch %s \
        you need to chose which commit you want to follow :\n\"\
@@ -268,6 +266,7 @@ let move_backward br nb_pas = (* Pas encore de merge, donc simple *)
          Branch_mvt.backward br sha ; 
          cm := Outils.find_commit br (* parent de sha *)
        end
+    | _ -> () (*none commit*)
   done
 
 

@@ -85,8 +85,8 @@ let do_f_mi f old_key new_key nb_chg cch fw =
   assert (Outils.mksha tmp_new_file = new_key) ;
   Outils.store tmp_new_file !dr_files ;
   Outils.remove tmp_new_file ;
-  tbl_fkeys := Outils.map_set_rm  old_key !branch !tbl_fkeys ;
-  tbl_fkeys := Outils.map_set_add new_key !branch !tbl_fkeys ;
+  tbl_fkeys := Outils.map_list_rm  old_key !branch !tbl_fkeys ;
+  tbl_fkeys := Outils.map_list_add new_key !branch !tbl_fkeys ;
   do_f_rb f old_key new_key
 (* ========================== *)
 
@@ -94,7 +94,7 @@ let do_f_mi f old_key new_key nb_chg cch fw =
 (* ===== FORWARD ===== *)
 let forward branch cm_sha =
   Outils.branch_switch branch ;
-  tbl_fkeys := Tree.load_tbl_fkeys () ;
+  tbl_fkeys := Outils.load_tbl_fkeys () ;
 
   let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
   Outils.load_fn cm_sha !dr_comms tmp_commit ;
@@ -102,7 +102,7 @@ let forward branch cm_sha =
 
   Scanf.bscanf cch "%s\n" ( function
     | "MERGE"  -> () (* rien à faire pour forward un tampon *)
-    | "SIMPLE" -> 
+    | _(*SIMPLE*) -> 
       Scanf.bscanf cch "Parent commit : %_s\n" () ;
       let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
       for _ = 1 to nb_op do
@@ -133,7 +133,7 @@ let forward branch cm_sha =
    chaque ligne dans le sens inverse, j'ai quand même fait 2 fct *)
 let backward branch cm_sha =
   Outils.branch_switch branch ;
-  tbl_fkeys := Tree.load_tbl_fkeys () ;
+  tbl_fkeys := Outils.load_tbl_fkeys () ;
 
   let tmp_commit = Filename.concat !dr_comms "tmp_commit" in
   Outils.load_fn cm_sha !dr_comms tmp_commit ;
@@ -146,9 +146,9 @@ let backward branch cm_sha =
          sera toujours suivi d'un second backward pour choisir la 
          résultante. Mais puisqu'il faut donner un pcommit, je prends
          "commit_absurde" pour faire crash si on n'a pas sur-backward. *)
-    | "SIMPLE" -> 
-      let pcommit = Scanf.bscanf cch "Parent commit : %_s\n" () in
-      let nb_op = Scanf.bscanf cch "Nb operations : %d\n" (fun n -> n) in
+    | _(*SIMPLE*) -> 
+      let pcommit = Scanf.bscanf cch "Parent commit : %s\n" (fun s->s) in
+      let nb_op   = Scanf.bscanf cch "Nb operations : %d\n" (fun n->n) in
       for _ = 1 to nb_op do
         Scanf.bscanf cch "%s %s "
         (fun a b -> match a,b with
@@ -161,7 +161,8 @@ let backward branch cm_sha =
         | "MODIF" ,"REBUILT" -> Scanf.bscanf cch "%s %s %s\n" (fun f ok nk -> do_f_rb f nk ok)
         | _,_-> Scanf.bscanf cch "%s %s %s %d\n" (*"MODIF""MINOR"*)   
           (fun f okey nkey nb_chg -> do_f_mi f nkey okey nb_chg cch false))
-      done )
+      done ;
+      pcommit)
   in
   Scanf.Scanning.close_in cch ;
   Outils.flush_tbl_fkeys !tbl_fkeys ;

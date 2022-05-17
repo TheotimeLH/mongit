@@ -27,10 +27,11 @@ let mkfile_num = 0o664
 let real_cwd = ref "" 
 let repo = ref ""
 let root = ref ""
-let old_br = ref []
 let branch = ref ""
 let to_be = ref ""
 let dr_trees = ref ""
 let dr_comms = ref ""
 let dr_files = ref ""
 let dr_brnch = ref ""
+let list_old_br : string list ref = ref []
+

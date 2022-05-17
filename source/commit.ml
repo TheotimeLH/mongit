@@ -1,7 +1,7 @@
 open Root
 open Scan_diff
 open Printf
-let len = len 
+let len = List.length
 
 (* 
  Le role de commit.ml est d'écrire le fichier de commit 
@@ -23,15 +23,15 @@ let tbl_fkeys = ref IdMap.empty
 let do_d_cr cch d =
   print_detail "Create dir : %s\n" d ;
   fprintf cch "CREATE DIR %s\n" d
-let do_f_cr_exist (f,key) =
-  tbl_fkeys := Outils.map_set_add key !branch !tbl_fkeys ;
+let do_f_cr_exist cch (f,key) =
+  tbl_fkeys := Outils.map_list_add key !branch !tbl_fkeys ;
   print_detail "Create file : %s\n" f ;
   fprintf cch "CREATE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 let do_f_cr cch f =
   Outils.store f !dr_files ;
   let key = Outils.mksha f in
-  do_f_cr_exist (f,key)
+  do_f_cr_exist cch (f,key)
 
 
 (* == MOVE == *)
@@ -93,7 +93,7 @@ let do_f_ch_aux cch fn fread old_key new_key =
   (* REBUILT : ON GARDE en mémoire l'old et le new *)
     incr nb_rebuilt ;
     Outils.store fread !dr_files ;
-    tbl_fkeys := Outils.map_set_add new_key !branch !tbl_fkeys ;
+    tbl_fkeys := Outils.map_list_add new_key !branch !tbl_fkeys ;
     fprintf cch "MODIF REBUILT %s %s %s\n" fn old_key new_key ;
   end
   else begin
@@ -124,14 +124,14 @@ let do_f_ch_aux cch fn fread old_key new_key =
 
 
 
-let do_f_ch chh (f,old_key) =
+let do_f_ch cch (f,old_key) =
   let new_key = Outils.mksha f in
   do_f_ch_aux cch f f old_key new_key
 
 let do_f_ch_exist cch (fn,old_key,new_key) =
   let tmp_new_file = Filename.concat !dr_files "tmp_new_file" in
   Outils.load_fn new_key !dr_files tmp_new_file ;
-  do_f_ch_aux cch f tmp_new_file old_key new_key ;
+  do_f_ch_aux cch fn tmp_new_file old_key new_key ;
   Outils.remove tmp_new_file 
 
 (* ================ *)
@@ -164,8 +164,8 @@ let print_commit msg pcommit
   List.iter (do_f_mv cch) f_to_mv ; (* (op*k)*np *)
   List.iter (do_d_rm cch) d_to_rm ; (* fn *)
   List.iter (do_f_rm cch) f_to_rm ; (* fn*k *) 
-  List.iter (do_f_cr_exist) f_to_cr_exist ; (* fn*k *)
-  List.iter (do_f_ch_exist) f_to_ch_exist ; (* fn*ok*nk *)
+  List.iter (do_f_cr_exist cch) f_to_cr_exist ; (* fn*k *)
+  List.iter (do_f_ch_exist cch) f_to_ch_exist ; (* fn*ok*nk *)
 
   fprintf cch "\nMessage :\n%s" msg ;
 
@@ -211,13 +211,13 @@ let compile_commit () = (* -> sha du commit *)
     printf "Modification of the branch \"%s\" :\n" !branch ;
     printf "-> %d file(s) to handle (and %d dir(s)) :\n|" nb_f_tree nb_d_tree ;
     flush stdout ;
-    (**)
+    (*=*)
     let pcommit = Outils.find_commit !branch in
     let sha = print_commit !msg pcommit
-      d_to_cr d_to_mv d_to_rm 
-      f_to_cr_tree f_to_ch_tree f_to_mv_tree f_to_rm_tree 
+      d_to_cr d_to_mv_tree d_to_rm_tree 
+      f_to_cr f_to_ch f_to_mv_tree f_to_rm_tree 
       [] [] in
-    (**)
+    (*=*)
     printf 
     "\nDone. created : %d ; rebuilt : %d ; slightly modified : %d ; \
       unchanged : %d ; removed : %d ; moved : %d\n"

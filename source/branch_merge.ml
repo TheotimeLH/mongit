@@ -124,16 +124,16 @@ let scan_merge br1 br2 br_anc =
           (IdMap.find_opt fn tbl_f1),
           (IdMap.find_opt fn tbl_f1) with
   | Some ka , Some k1 , None    when ka=k1  -> Outils.append l_f_1x_2rm  (fn,k1)
-  | Some ka , Some k1 , None                -> Outils.append l_f_1ch_2rm (fn,k1) (**)
+  | Some ka , Some k1 , None                -> Outils.append l_f_1ch_2rm (fn,k1) (*=*)
   | Some ka , None    , Some k2 when ka=k2  -> Outils.append l_f_1rm_2x  (fn,k2)
-  | Some ka , None    , Some k2             -> Outils.append l_f_1rm_2ch (fn,k2) (**)
+  | Some ka , None    , Some k2             -> Outils.append l_f_1rm_2ch (fn,k2) (*=*)
   | None    , Some k1 , None                -> Outils.append l_f_1cr_2x  (fn,k1)
   | None    , None    , Some k2             -> Outils.append l_f_1x_2cr  (fn,k2)
-  | None    , Some k1 , Some k2 when k1<>k2 -> Outils.append l_f_1cr_2cr (fn,k1,k2) (**)
+  | None    , Some k1 , Some k2 when k1<>k2 -> Outils.append l_f_1cr_2cr (fn,k1,k2) (*=*)
   | Some ka , Some k1 , Some k2 when k1=ka && ka<>k2 -> Outils.append l_f_1x_2ch (fn,ka,k2)
   | Some ka , Some k1 , Some k2 when k2=ka && ka<>k1 -> Outils.append l_f_1ch_2x (fn,ka,k1)
   | Some ka , Some k1 , Some k2 when k1<>ka && k2<>ka && k1<>k2 
-    -> Outils.append l_f_1ch_2ch (fn,ka,k1,k2) (**)
+    -> Outils.append l_f_1ch_2ch (fn,ka,k1,k2) (*=*)
   | _ , _ , _ -> ()
   ) all_files ;
 

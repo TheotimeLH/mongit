@@ -122,7 +122,7 @@ let enumerate_unk df = (* -> dir list * file list *)
     if is_f then ([],[(df,key)])
     else enumerate df key
 
-let enumerate_all_set br =
+let enumerate_all br =
   Outils.branch_switch br ;
   let ld,lf = enumerate_unk "" in
   Outils.branch_switch_former () ;
