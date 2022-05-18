@@ -285,9 +285,8 @@ let uncompress infile outfile =
 
 
 (* ===== STORE / LOAD / RM ===== *)
-
 let store f dir =
-  let key,rest = mksha fread |> cut_sha in
+  let key,rest = mksha f |> cut_sha in
   let subdir = Filename.concat dir key in
   if not (Sys.file_exists subdir) 
   || not (Array.mem rest (Sys.readdir subdir))
@@ -297,7 +296,6 @@ let store f dir =
     let out = Filename.concat subdir rest in
     compress f out
   end
-
 
 let load str_h dir oc =
   let key,rest = cut_sha str_h in
@@ -318,6 +316,27 @@ let remove_hash dir str_h =
   Sys.remove file ;
   try Sys.rmdir subdir 
   with | _ (* not empty *) -> ()
+
+let rename_commit oldsha newsha =
+  let oldk,oldr = cut_sha oldsha 
+  and newk,newr = cut_sha newsha in
+  let oldsd = Filename.concat !dr_comms oldk
+  and newsd = Filename.concat !dr_comms newk in
+  if not (Sys.file_exists newsd)
+  then Sys.mkdir newsd Root.mkdir_num ;
+  Sys.rename (Filename.concat oldsd oldr) 
+             (Filename.concat newsd newr) ;
+  try Sys.rmdir oldsd
+  with | _ (* not empty *) -> ()
+
+let nb_lines sha =
+  let tmp = Filename.concat !dr_files "tmp_file_nb_lines" in
+  load_fn sha !dr_files tmp ;
+  let nb = Array.length (readlines tmp) in
+  remove tmp ;
+  nb
+
+
 (* ================== *)
 
 
@@ -384,12 +403,6 @@ let branch_switch_former () = match !list_old_br with
       branch := br ;
       init_file (Filename.concat !dr_brnch "HEAD") (br^"\n") ;
       list_old_br := q
-(* ================== *)
-
-
-(* ===== RENAME COMMIT ===== *)
-let rename_commit oldk newk =
-  let tmp = Filename.concat !dr_comms "tmp_commit_rename"
 (* ================== *)
 
 

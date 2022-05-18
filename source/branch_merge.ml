@@ -168,7 +168,7 @@ let scan_merge br1 br2 br_anc =
 (* ============================================================= *)
 
 (* La fonction qui print les 3 commits *)
-let print_merge br1 cm1 br2 cm2 br_anc = 
+let write_merge br1 cm1 br2 cm2 br_anc = 
   let l_d_1cr_2x , l_d_1x_2cr ,
       l_d_1rm_2x , l_d_1x_2rm ,
       l_f_1cr_2x , l_f_1x_2cr ,
@@ -177,7 +177,7 @@ let print_merge br1 cm1 br2 cm2 br_anc =
 
   let msg1 = sprintf "Resulting 1 of the merge of %s and %s.\n" cm1 cm2 in
   let sha1 =
-  Commit.print_commit msg1 cm1
+  Commit.write_commit msg1 cm1
     l_d_1x_2cr [] l_d_1x_2rm
     [] [] [] l_f_1x_2rm
     l_f_1x_2cr l_f_1x_2ch
@@ -185,20 +185,25 @@ let print_merge br1 cm1 br2 cm2 br_anc =
 
   let msg2 = sprintf "Resulting 2 of the merge of %s and %s.\n" cm1 cm2 in
   let sha2 =
-  Commit.print_commit msg2 cm2
+  Commit.write_commit msg2 cm2
     l_d_1cr_2x [] l_d_1rm_2x
     [] [] [] l_f_1rm_2x
     l_f_1cr_2x l_f_1ch_2x
   in
 
+  (* On lie les deux commits ensemble, et on fait le commit merge *)
+  let sha1_m = Outils.sha_name (sha1 ^ sha2) 
+  and sha2_m = Outils.sha_name (sha2 ^ sha1) in
+  Outils.rename_commit sha1 sha1_m ;
+  Outils.rename_commit sha2 sha2_m ;
   let tmp_file = Filename.concat !dr_comms "tmp_commit_merge_file" in
   let cch = open_out tmp_file in
-  fprintf cch "MERGE\nResulting commits : %s and %s\n" sha1 sha2 ;
+  fprintf cch "MERGE\nResulting commits : %s and %s\n" sha1_m sha2_m ;
   close_out cch ;
   Outils.store tmp_file !dr_comms ;
   let sha = Outils.mksha tmp_file in
   if not !bool_print_debug then Sys.remove tmp_file ;
-  ( sha1 , sha2 , sha )
+  ( sha1_m , sha2_m , sha )
     
 (* ============================================================= *)
   
@@ -280,7 +285,7 @@ let cmd_merge l =
   let br_tmp = "tmp_for_merge" in
   Branch.create !br_pp br_tmp ;
   List.iter (Branch_mvt.backward br_tmp) !chemin_acc ;
-  let (sha1,sha2,sha) = print_merge br1 cm1 br2 cm2 br_tmp in
+  let (sha1,sha2,sha) = write_merge br1 cm1 br2 cm2 br_tmp in
   Branch_mvt.forward br1 sha1 ; (* vrai travail *)
   Branch_mvt.forward br2 sha2 ;
   Branch_mvt.forward br1 sha ; (* pour clarifier le graphe *)

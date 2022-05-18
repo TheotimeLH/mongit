@@ -137,6 +137,7 @@ let make_commit_graph commits =
 
 let cmd_graph () =
   Outils.init () ;
+  Outils.rootwd () ;
   let oc = open_out "branches.dot" in
   fprintf oc "digraph branches_graph{\nrankdir=LR;\n" ;
   let commits = Outils.list_sha !dr_comms in
@@ -195,7 +196,8 @@ let cmd_graph () =
 
   fprintf oc "}" ;
   close_out oc ;
-  Outils.use_graphviz "branches"
+  Outils.use_graphviz "branches" ;
+  Outils.realwd ()
 (* ================= *)
 
 

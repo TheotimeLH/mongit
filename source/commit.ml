@@ -29,6 +29,7 @@ let do_f_cr_exist cch (f,key) =
 let do_f_cr cch f =
   Outils.store f !dr_files ;
   let key = Outils.mksha f in
+  nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;
   do_f_cr_exist cch (f,key)
 
 
@@ -49,6 +50,7 @@ let real_rm = Outils.remove
 let do_d_rm cch d =
   fprintf cch "REMOVE DIR %s\n" d
 let do_f_rm cch (f,key) =
+  nb_lines_del := !nb_lines_del + (Outils.nb_lines key) ;
   fprintf cch "REMOVE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 
@@ -149,19 +151,25 @@ let explain_commit msg
   List.iter  (printf "Remove file : %s\n") (lf f_to_rm) ;
   List.iter  (printf "Create based on existing file : %s\n") (lf f_to_cr_exist) ;
   List.iter  (fun (fn,_,_) -> 
-              printf "Change based on existing file : %s\n" fn) f_to_ch_exist ;
-  Outils.print_line ()
+              printf "Change based on existing file : %s\n" fn) f_to_ch_exist 
 
 
-(* ===== print_commit ===== *)
-(* La fonction print_commit sert à la fois pour la cmd_commit,
+(* ===== write_commit ===== *)
+(* La fonction write_commit sert à la fois pour la cmd_commit,
    avec ce qui suit. Mais aussi pour les commits résultants
    de merge, cf branch_merge.ml
    Donc il faut une fonction générique. *)
-let print_commit msg pcommit
+let write_commit msg pcommit
       d_to_cr d_to_mv d_to_rm 
       f_to_cr f_to_ch f_to_mv f_to_rm 
       f_to_cr_exist f_to_ch_exist = (* -> le sha du commit *)
+
+  if !bool_print_detail 
+  then explain_commit msg
+      d_to_cr d_to_mv d_to_rm 
+      f_to_cr f_to_ch f_to_mv f_to_rm 
+      f_to_cr_exist f_to_ch_exist ;
+
   tbl_fkeys := Outils.load_tbl_fkeys () ;
   let tmp_file = Filename.concat !dr_comms "tmp_commit_file" in
   let cch = open_out tmp_file in
@@ -190,12 +198,7 @@ let print_commit msg pcommit
   Outils.store tmp_file !dr_comms ;
   Outils.flush_tbl_fkeys !tbl_fkeys ;
   if not !bool_print_debug then Sys.remove tmp_file ;
-
-  if !bool_print_detail 
-  then explain_commit msg
-      d_to_cr d_to_mv d_to_rm 
-      f_to_cr f_to_ch f_to_mv f_to_rm 
-      f_to_cr_exist f_to_ch_exist ;
+  print_newline () ;
 
   sha
 (* ================ *)
@@ -236,13 +239,13 @@ let compile_commit () = (* -> sha du commit *)
     flush stdout ;
     (*=*)
     let pcommit = Outils.find_commit !branch in
-    let sha = print_commit !msg pcommit
+    let sha = write_commit !msg pcommit
       d_to_cr d_to_mv_tree d_to_rm_tree 
       f_to_cr f_to_ch f_to_mv_tree f_to_rm_tree 
       [] [] in
     (*=*)
     printf 
-    "\nDone. created : %d ; rebuilt : %d ; slightly modified : %d ; \
+     "Done. created : %d ; rebuilt : %d ; slightly modified : %d ; \
       unchanged : %d ; removed : %d ; moved : %d\n"
       nb_f_cr !nb_rebuilt !nb_minor nb_nothing nb_f_rm_tree nb_f_mv_tree ;
     printf "Total : %d insertions(+), %d deletions(-)\n"
@@ -279,5 +282,3 @@ let cmd_commit () =
 (* let cch = 
     open_out_gen [Open_creat ; Open_trunc] mkfile_num tmp_file in
    Donne un bug trop bizarre *)
-  (*nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;*)
-  (*nb_lines_del := !nb_lines_del + (Array.length (Outils.readlines f)) ;*)
