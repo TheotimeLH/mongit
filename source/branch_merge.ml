@@ -102,14 +102,7 @@ let scan_merge br1 br2 br_anc =
    mais on peut aussi l'utiliser pour les fichiers. En effet ce sont des st
    de paires (nom,key), donc par l'inter on controle l'égalité des clés. *)
 
-  let st_d_idem1 = IdSet.inter st_d1 st_da 
-  and st_d_idem2 = IdSet.inter st_d2 st_da in
-
-  l_d_1cr_2x := IdSet.diff st_d1 st_d_idem2 |> IdSet.elements ;
-  l_d_1x_2cr := IdSet.diff st_d2 st_d_idem1 |> IdSet.elements ;
-  l_d_1rm_2x := IdSet.diff st_d_idem2 st_d1 |> IdSet.elements ;
-  l_d_1x_2rm := IdSet.diff st_d_idem1 st_d2 |> IdSet.elements ;
-
+  let all_dirs = IdSet.union st_d1 (IdSet.union st_d2 st_da) in
   let all_files = 
     IdSet.union
     (tbl_fa |> IdMap.bindings |> List.split |> fst |> Outils.set_of_list)
@@ -119,7 +112,28 @@ let scan_merge br1 br2 br_anc =
     |> IdSet.elements 
   in
 
-  print_debug "All_files concerned by the merge : \n%s\n" (String.concat "\n" all_files) ;
+  print_debug 
+    "=>Dossiers dans 1 : \n%s\n=>dossiers dans \
+     2 : \n%s\n=>dossier dans l'anc : \n%s\n"
+    (String.concat "\n" (IdSet.elements st_d1))
+    (String.concat "\n" (IdSet.elements st_d2))
+    (String.concat "\n" (IdSet.elements st_da)) ;
+  print_debug "All_files concerned by the merge : \
+    \n%s\n" (String.concat "\n" all_files) ;
+
+
+  IdSet.iter
+  (fun d -> 
+    match (IdSet.mem d st_da),
+          (IdSet.mem d st_d1),
+          (IdSet.mem d st_d2) with
+  | true  , true  , false -> Outils.append l_d_1x_2rm d
+  | true  , false , true  -> Outils.append l_d_1rm_2x d
+  | false , false , true  -> Outils.append l_d_1x_2cr d
+  | false , true  , false -> Outils.append l_d_1cr_2x d
+  | _ , _ , _ -> ()
+  ) all_dirs ;
+
 
   List.iter
   (fun fn -> 

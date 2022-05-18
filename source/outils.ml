@@ -59,16 +59,23 @@ let map_of_list l =
 
 let short s = (String.sub s 0 4)
 
-let map_set_add key t tbl = match IdMap.find_opt key tbl with
+let map_set_add key t tbl = 
+  match IdMap.find_opt key tbl with
   | None    -> IdMap.add key (IdSet.singleton t) tbl
   | Some st -> IdMap.add key (IdSet.add t st   ) tbl
 
 let map_set_rm  key t tbl = 
   IdMap.add key (IdSet.remove t (IdMap.find key tbl)) tbl
 
-let map_list_add key t tbl = match IdMap.find_opt key tbl with
+let map_list_add key t tbl = 
+  match IdMap.find_opt key tbl with
   | None    -> IdMap.add key [t] tbl
   | Some l -> IdMap.add key (t::l) tbl 
+
+let map_list_extend key nl tbl = 
+  match IdMap.find_opt key tbl with
+  | None    -> IdMap.add key nl tbl
+  | Some l -> IdMap.add key (nl@l) tbl  
 
 let map_list_rm  key t tbl =
   IdMap.add key (list_rm_fst_occ t (IdMap.find key tbl)) tbl
@@ -104,7 +111,7 @@ let safe_realpath path =
 (* ================== *)
 
 
-(* ===== Scanf.input_line PARCE QUE PUTAIN CETTE FONCTION N'EXISTE PAS ===== *)
+(* ===== Scanf.input_line PARCE QUE P***** CETTE FONCTION N'EXISTE PAS ===== *)
 let scanf_input_line ic =
   let b = Buffer.create 10 in
   let c = ref (Scanf.bscanf ic "%c" (fun c->c)) in
@@ -389,8 +396,13 @@ let use_graphviz s =
 
 
 (* ===== BRANCH FCT ===== *)
-(* Parce que sinon dépendance cyclique entre les 
-   fichiers branch.ml et branch_mvt.ml *)
+(* Parce que sinon dépendance cyclique entre les fichiers *)
+let list_br () =
+  let a = Sys.readdir !dr_brnch in
+  let l = ref [] in
+  Array.iter (fun br -> if br<>"HEAD" then append l br) a ;
+  !l
+
 let branch_switch br = 
   append list_old_br !branch ;
   branch := br ;

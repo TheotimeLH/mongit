@@ -2,18 +2,12 @@ open Printf
 open Root
 
 (* ===== LIST ===== *)
-let list_br () =
-  let a = Sys.readdir !dr_brnch in
-  let l = ref [] in
-  Array.iter (fun br -> if br<>"HEAD" then Outils.append l br) a ;
-  !l
-
 let cmd_list () =
   Outils.init () ;
   printf "List of branches : " ;
   List.iter 
     (fun br -> if br <> !branch then printf "%s " br 
-    else (printf "\x1B[34m%s\x1B[97m " br)) (list_br ()) ;
+    else (printf "\x1B[34m%s\x1B[97m " br)) (Outils.list_br ()) ;
   print_newline ()
 (* ================= *)
 
@@ -50,7 +44,7 @@ let duplicate_keys br1 br2 = (*-> files/all_fkeys*)
 
 
 let create br1 new_br =
-  if List.mem new_br (list_br ()) then 
+  if List.mem new_br (Outils.list_br ()) then 
   ( eprintf "There already exists a branch called %s.\n" new_br ; exit 1) ;
   copy_tree br1 new_br ;
   duplicate_keys br1 new_br ;
@@ -80,7 +74,7 @@ let delete br =
 (* ===== SWITCH ===== *)
 let cmd_switch br =
   Outils.init () ;
-  if not (List.mem br (list_br ())) then
+  if not (List.mem br (Outils.list_br ())) then
   (eprintf "There is no branch called %s.\n" br ; exit 1) ;
   let ic = open_in !to_be in
   begin try ignore (input_line ic) ; (* devrait raise EOF *)
@@ -137,7 +131,6 @@ let make_commit_graph commits =
 
 let cmd_graph () =
   Outils.init () ;
-  Outils.rootwd () ;
   let oc = open_out "branches.dot" in
   fprintf oc "digraph branches_graph{\nrankdir=LR;\n" ;
   let commits = Outils.list_sha !dr_comms in
@@ -179,7 +172,7 @@ let cmd_graph () =
   ) commits ;
 
   (* == BRANCHES == *)
-  let branches = list_br () in
+  let branches = Outils.list_br () in
   let tbl_br_cm = ref IdMap.empty in
   List.iter
   (fun br -> let cm = Outils.find_commit br in 
@@ -196,8 +189,7 @@ let cmd_graph () =
 
   fprintf oc "}" ;
   close_out oc ;
-  Outils.use_graphviz "branches" ;
-  Outils.realwd ()
+  Outils.use_graphviz "branches"
 (* ================= *)
 
 
@@ -221,19 +213,30 @@ let move_forward br nb_pas =
     match IdSet.elements st_next with
     | [] -> ()
     | [cm_next] -> avance cm_next
-    | l -> printf
-      "The branch %s cannot be moved forward after \"%s...\" \
-       because several commits are possible :\n%s\n"
-       br (Outils.short !cm) (String.concat "\n" l) ;
-       let cm_next = ref "" in
-       while !cm_next<>"stop" && not (List.mem !cm_next l) do
-        printf "You can write \"stop\" to end the migration here, \
-                and use \"mg -cat_commit <sha>\" and/or \"mg -branch \
-                -graph\" to thought.\n" ;
-        cm_next := read_line ()
-       done ;
-       if !cm_next="stop" then (printf "Stopped.\n";exit 0)
-       else avance !cm_next
+    | l -> 
+      let acm = Array.of_list l in
+      let nb_cm = Array.length acm in
+      printf
+        "The branch %s cannot be moved forward after \"%s...\" \
+        because several commits are possible :\n"
+        br (Outils.short !cm) ;
+      Array.iteri (fun i -> printf "\"%d\" : %s\n" (i+1)) acm ;
+      let rec ask_num () =
+        let m = read_line () in
+        try 
+          let n =int_of_string m in
+          if 0<n && n <= nb_cm then n
+          else ( printf 
+             "Out of the range, chose a number between 1 and %d.\n" 
+             nb_cm ; ask_num () )
+        with | _ -> 
+          if m = "stop" then (printf "Stopped.\n"; exit 0)
+          else ( printf 
+             "Chose a number or write \"stop\" to end the migration here.\
+              \n\"mg -branch -graph\" ; \"mg -list_commits\" ; \
+              \"mg -cat_commit <sha>\" might help.\n" ; ask_num ())
+      in
+      avance acm.(ask_num () -1)
   done
 
 

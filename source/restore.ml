@@ -27,7 +27,7 @@ let cmd_restore df = (* dir or file *)
   else begin
     if nb_d<>0 then begin
       List.iter Outils.create_dir l_d_to_restore ;
-      printf "%d directories have been restored.\n" nb_d
+      printf "%d dir(s) have been restored.\n" nb_d
     end ;
     if nb_f<>0 then begin
       printf 

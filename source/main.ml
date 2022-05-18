@@ -1,8 +1,11 @@
 open Arg
+open Printf
 
 let subparser = ref "default"
 let speclist = ref []
 
+(* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
+(* ~~~~~ COMMIT PARSER ~~~~~ *)
 let subparser_commit () =
   subparser := "commit" ;
   speclist := [
@@ -10,7 +13,12 @@ let subparser_commit () =
       Set_string Commit.msg ,
       "add a message to the commit");
   ]
+(* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
 
+
+
+(* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
+(* ~~~~~ BRANCH PARSER ~~~~~ *)
 let subparser_branch () =
   subparser := "branch" ;
   speclist := [
@@ -19,7 +27,7 @@ let subparser_branch () =
       "create a new branch on place");
    ("-list",
       Unit Branch.cmd_list ,
-      "list all the existing branches");
+      "list all existing branches");
    ("-switch",
       String Branch.cmd_switch ,
       "change of current/HEAD branch");
@@ -36,75 +44,112 @@ let subparser_branch () =
       Rest_all Branch_merge.cmd_merge,
       "Merge two branches, using their closest common ancestor as reference.");
   ]
+(* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
 
+
+
+  
+(* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
+(* ~~~~~ DEFAULT PARSER ~~~~~ *)
 let () = speclist :=
-  [("-debug", 
-      Set Root.bool_print_debug , 
-      "Print debug messages");
-   ("-detail", 
-      Set Root.bool_print_detail , 
-      "Detail more what has been done");
+(* ===== INIT ===== *)
+  [("-init",
+      Unit Basic_cmds.init , 
+      "create a new repository for the cwd\n");
+(* ================================== *)
+
+(* ===== BASIC COMMIT COMMANDS : ADD... COMMIT ===== *)
+   ("-add",
+      Rest (Pre_commit.pre_commit_cmd "add"),
+      "set the file/dir as to be saved/commited");
+   ("-minus",
+      Rest (Pre_commit.pre_commit_cmd "minus"),
+      "precise a -add, by withdrawing file/dir \
+       from \"to_be_commited\".");
+   ("-move",
+      Rest_all Pre_commit.cmd_move,
+      "move the file/dir in the current.\
+       Check -only_on_repo.");
+   ("-remove",
+      Rest (Pre_commit.pre_commit_cmd "remove"),
+      "remove the file/dir in the current branch.\
+       Check -only_on_repo.");
+   ("-commit",
+      Unit subparser_commit,
+      "save the modifications\n");
+(* ================================== *)
+
+(* ===== VERSION CONTROL ===== *)
+   ("-ls",
+      Unit Tree.cmd_ls , 
+      "display a graph of the current copy");
+   ("-status",
+      Unit Status.cmd_status , 
+      "show the status of the current branch");
+   ("-restore",
+      String Restore.cmd_restore ,
+      "restore a file/dir\n");
+(* ================================== *)
+
+(* ===== ACCES TO BRANCH SUBPARSER ===== *)
+   ("-branch",
+      Unit subparser_branch,
+      "to acces commands on branches\n");
+(* ================================== *)
+
+(* ===== OPTIONS ===== *)
+   ("-only_on_repo", 
+      Set Root.only_on_repo , 
+      "limit remove and move cmds so that \
+       they only affect the repo");
    ("-include_secret", 
       Set Root.include_secret , 
-      "Enables operations over secret files");
-   ("-init",
-      Unit Basic_cmds.init , 
-      "Create a new repository for the current working directory.");
+      "enable operations over secret files");
+   ("-detail", 
+      Set Root.bool_print_detail , 
+      "Detail more what happens");
+   ("-debug", 
+      Set Root.bool_print_debug , 
+      "enable debug messages\n");
+(* ================================== *)
+
+(* ===== SIMPLE CMDS : CAT/LIST COMMIT/FILE ===== *)
+   ("-reset_commit",
+      Unit Basic_cmds.cmd_reset_commit,
+      "empty file to_be_commited.");
+   ("-cat_file",
+      String Basic_cmds.cat_file ,
+      "print a file stored given a sha");
+   ("-cat_commit",
+      String Basic_cmds.cat_commit ,
+      "print the content of a commit given a sha");
+   ("-list_commits",
+      Unit Basic_cmds.cmd_list_commits ,
+      "list existing sha commits");
+   ("-list_files",
+      Unit Basic_cmds.cmd_list_files ,
+      "list stored sha files/versions\n");
+(* ================================== *)
+
+(* ===== REMOVE ===== *)
    ("-remove_repo",
       Unit Basic_cmds.remove_repo ,
       "Remove the cwd repo.");
+(* ================================== *)
+
+(* ===== VERY SPECIAL COMMAND TO UPDATE MG ===== *)
    ("-update",
       Unit Basic_cmds.update ,
-      "Update mongit.");
-   ("-hash_file",
-      String Basic_cmds.hash_file ,
-      "< mg -hash_file \"filename\" > will store \"filename\" at .mongit/files/");
-   ("-cat_file",
-      String Basic_cmds.cat_file ,
-      "< mg -cat_file \"sha_key\" > will print out the file .mongit/files/sha_key");
-   ("-cat_commit",
-      String Basic_cmds.cat_commit ,
-      "< mg -cat_file \"sha_key\" > will print out the file .mongit/commits/sha_key");
-   ("-add",
-      Rest (Pre_commit.pre_commit_cmd "add"),
-      "< mg -add \"filename\" > set the file/directory as to be saved on the next commit");
-   ("-minus",
-      Rest (Pre_commit.pre_commit_cmd "minus"),
-      "< mg -minus \"filename\" > remove the file/dir from the list of files to be commited. \n\
-       Can be used to undo a -add, or to be more precise. \n\
-       For instance you can -add a whole directory and then -minus just one file the dir contains.");
-   ("-remove",
-      Rest (Pre_commit.pre_commit_cmd "remove"),
-      "Remove the file/dir from the current copy branch.");
-   ("-move",
-      Rest_all Pre_commit.cmd_move,
-      "Move the file/dir both in the real working directory and in the current copy branch.");
-   ("-commit",
-      Unit subparser_commit,
-      "Save the modifications in the repo.");
-   ("-reset_commit",
-      Unit Basic_cmds.cmd_reset_commit,
-      "Empty file to_be_commited.");
-   ("-ls",
-      Unit Tree.cmd_ls , 
-      "Create a \"repo_tree.pdf\" file (using Graphviz's dot command).");
-   ("-status",
-      Unit Status.cmd_status , 
-      "Show the status of the copy.");
-   ("-restore",
-      String Restore.cmd_restore ,
-      "Restore the file requested (or the whole directory).");
-   ("-only_on_repo", 
-      Set Root.only_on_repo , 
-      "Limits remove and move commands so that they only affect the repo");
-   ("-branch",
-      Unit subparser_branch,
-      "To acces commands on branches.");
+      "Very special command to update mg.")
+(* ================================== *)
    ]
+(* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
 
 
-let () = Arg.parse_dynamic speclist Tmp.aff_qlqch ""
+let fct_anon s =
+  if s<>"" then printf "Unparsed word : %s\n" s
 
+let () = Arg.parse_dynamic speclist fct_anon ""
 let () = match !subparser with
   | "commit" -> Commit.cmd_commit ()
   | _ -> ()

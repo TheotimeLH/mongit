@@ -23,12 +23,12 @@ let tbl_fkeys = ref IdMap.empty
 let do_d_cr cch d =
   fprintf cch "CREATE DIR %s\n" d
 let do_f_cr_exist cch (f,key) =
-  tbl_fkeys := Outils.map_list_add key !branch !tbl_fkeys ;
   fprintf cch "CREATE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 let do_f_cr cch f =
   Outils.store f !dr_files ;
   let key = Outils.mksha f in
+  tbl_fkeys := Outils.map_list_extend key (Outils.list_br ()) !tbl_fkeys ;
   nb_lines_add := !nb_lines_add + (Array.length (Outils.readlines f)) ;
   do_f_cr_exist cch (f,key)
 
@@ -88,7 +88,8 @@ let do_f_ch_aux cch fn fread old_key new_key =
   (* REBUILT : ON GARDE en mémoire l'old et le new *)
     incr nb_rebuilt ;
     Outils.store fread !dr_files ;
-    tbl_fkeys := Outils.map_list_add new_key !branch !tbl_fkeys ;
+    tbl_fkeys := Outils.map_list_extend new_key 
+      (Outils.list_br ()) !tbl_fkeys ;
     fprintf cch "MODIF REBUILT %s %s %s\n" fn old_key new_key ;
   end
   else begin
@@ -174,8 +175,10 @@ let write_commit msg pcommit
   let tmp_file = Filename.concat !dr_comms "tmp_commit_file" in
   let cch = open_out tmp_file in
 
-  let nb_f = len f_to_cr + len f_to_mv + len f_to_rm + len f_to_ch
-  and nb_d = len d_to_cr + len d_to_mv + len d_to_rm in
+  let nb_d = len d_to_cr + len d_to_mv + len d_to_rm 
+  and nb_f = len f_to_cr + len f_to_mv + len f_to_rm + len f_to_ch
+    + len f_to_cr_exist + len f_to_ch_exist in
+
 
   fprintf cch "SIMPLE\nParent commit : %s\n" pcommit ;
   fprintf cch "Nb operations : %d\n" (nb_f+nb_d) ;

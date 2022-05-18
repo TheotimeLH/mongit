@@ -49,7 +49,8 @@ let cmd_ls () =
       (fun t s nk ->
         fprintf oc "%d -> %d;\n" num !num_max ;
         if t = "dir" then read s nk !num_max
-        else fprintf oc "%d [label=\"%s\"];\n" !num_max s)
+        else fprintf oc "%d [label=\"%s\n%s\"];\n" 
+          !num_max s (Outils.short nk))
     done with | End_of_file -> () end ;
     Scanf.Scanning.close_in ic
   in

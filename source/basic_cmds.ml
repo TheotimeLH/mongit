@@ -52,14 +52,6 @@ let update () =
 (* ================ *)
 
 
-(* ===== HASH-FILE ===== *)
-let hash_file f =
-  Outils.init () ;
-  Outils.exists_chk f ;
-  Outils.store f !dr_files
-(* ================ *)
-
-
 (* ===== CAT ===== *) 
 let cat_file str_h =
   Outils.init () ;
@@ -68,6 +60,16 @@ let cat_file str_h =
 let cat_commit str_h =
   Outils.init () ;
   Outils.load str_h !dr_comms stdout
+
+let cmd_list_commits () =
+  Outils.init () ;
+  let commits = Outils.list_sha !dr_comms in
+  printf "Existing commits :\n%s\n" (String.concat "\n" commits)
+
+let cmd_list_files () =
+  Outils.init () ;
+  let files = Outils.list_sha !dr_files in
+  printf "Files/Versions stored :\n%s\n" (String.concat "\n" files)
 (* ================ *)
 
 (* ===== RESET COMMIT ===== *)

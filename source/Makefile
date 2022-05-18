@@ -9,7 +9,6 @@ clean:
 	rm -f mongit
 
 cmd: mk_mongit
-	cp -f mongit $$HOME/Documents/Projets/bin/mongit
 	cp -f mongit $$HOME/Documents/Projets/bin/mg
 
 .PHONY:
