@@ -77,7 +77,7 @@ let chose_rm_ch br_rm br_ch (fn,k) =
 
 (* ============================================================= *)
 (* Départage les modifications d'un même fichier *)
-let scan_double_ch (fn,ka,k1,k2) = () (* TODO *)
+let scan_double_ch (_,_,_,_)(*fn,ka,k1,k2)*) = () (* TODO *)
 
 
 
@@ -105,10 +105,10 @@ let scan_merge br1 br2 br_anc =
   let st_d_idem1 = IdSet.inter st_d1 st_da 
   and st_d_idem2 = IdSet.inter st_d2 st_da in
 
-  l_d_1cr_2x := IdSet.disjoint st_d1 st_d_idem2 |> IdSet.elements ;
-  l_d_1x_2cr := IdSet.disjoint st_d2 st_d_idem1 |> IdSet.elements ;
-  l_d_1rm_2x := IdSet.disjoint st_d_idem2 st_d1 |> IdSet.elements ;
-  l_d_1x_2rm := IdSet.disjoint st_d_idem1 st_d2 |> IdSet.elements ;
+  l_d_1cr_2x := IdSet.diff st_d1 st_d_idem2 |> IdSet.elements ;
+  l_d_1x_2cr := IdSet.diff st_d2 st_d_idem1 |> IdSet.elements ;
+  l_d_1rm_2x := IdSet.diff st_d_idem2 st_d1 |> IdSet.elements ;
+  l_d_1x_2rm := IdSet.diff st_d_idem1 st_d2 |> IdSet.elements ;
 
   let all_files = 
     IdSet.union
@@ -116,17 +116,20 @@ let scan_merge br1 br2 br_anc =
     (IdSet.union 
     (tbl_f1 |> IdMap.bindings |> List.split |> fst |> Outils.set_of_list)
     (tbl_f2 |> IdMap.bindings |> List.split |> fst |> Outils.set_of_list))
+    |> IdSet.elements 
   in
 
-  IdSet.iter
+  print_debug "All_files concerned by the merge : \n%s\n" (String.concat "\n" all_files) ;
+
+  List.iter
   (fun fn -> 
     match (IdMap.find_opt fn tbl_fa),
           (IdMap.find_opt fn tbl_f1),
-          (IdMap.find_opt fn tbl_f1) with
+          (IdMap.find_opt fn tbl_f2) with
   | Some ka , Some k1 , None    when ka=k1  -> Outils.append l_f_1x_2rm  (fn,k1)
-  | Some ka , Some k1 , None                -> Outils.append l_f_1ch_2rm (fn,k1) (*=*)
+  | Some _  , Some k1 , None                -> Outils.append l_f_1ch_2rm (fn,k1) (*=*)
   | Some ka , None    , Some k2 when ka=k2  -> Outils.append l_f_1rm_2x  (fn,k2)
-  | Some ka , None    , Some k2             -> Outils.append l_f_1rm_2ch (fn,k2) (*=*)
+  | Some _  , None    , Some k2             -> Outils.append l_f_1rm_2ch (fn,k2) (*=*)
   | None    , Some k1 , None                -> Outils.append l_f_1cr_2x  (fn,k1)
   | None    , None    , Some k2             -> Outils.append l_f_1x_2cr  (fn,k2)
   | None    , Some k1 , Some k2 when k1<>k2 -> Outils.append l_f_1cr_2cr (fn,k1,k2) (*=*)
@@ -139,14 +142,14 @@ let scan_merge br1 br2 br_anc =
 
 
   (* ETAPE 2 : Résolution des conflits *)
-  let l_chose1,l_chose2 = List.partition chose_cr_cr !l_f_1cr_2cr in
-  Outils.extend l_f_1cr_2x (List.map (fun (fn,k1,k2) -> (fn,k1)) l_chose1_cr) ;
-  Outils.extend l_f_1rm_2x (List.map (fun (fn,k1,k2) -> (fn,k2)) l_chose1_cr) ;
-  Outils.extend l_f_1x_2cr (List.map (fun (fn,k1,k2) -> (fn,k2)) l_chose2_cr) ;
-  Outils.extend l_f_1x_2rm (List.map (fun (fn,k1,k2) -> (fn,k1)) l_chose2_cr) ;
+  let l_chose_cr1,l_chose_cr2 = List.partition chose_cr_cr !l_f_1cr_2cr in
+  Outils.extend l_f_1cr_2x (List.map (fun (fn,k1,_) -> (fn,k1)) l_chose_cr1) ;
+  Outils.extend l_f_1rm_2x (List.map (fun (fn,_,k2) -> (fn,k2)) l_chose_cr1) ;
+  Outils.extend l_f_1x_2cr (List.map (fun (fn,_,k2) -> (fn,k2)) l_chose_cr2) ;
+  Outils.extend l_f_1x_2rm (List.map (fun (fn,k1,_) -> (fn,k1)) l_chose_cr2) ;
 
-  let l_chose_rm1,l_chose_ch2 = List.partition chose_cr_rm !l_f_1rm_2ch in 
-  let l_chose_rm2,l_chose_ch1 = List.partition chose_cr_rm !l_f_1ch_2rm in 
+  let l_chose_rm1,l_chose_ch2 = List.partition (chose_rm_ch br1 br2) !l_f_1rm_2ch in 
+  let l_chose_rm2,l_chose_ch1 = List.partition (chose_rm_ch br2 br1) !l_f_1ch_2rm in 
   Outils.extend l_f_1rm_2x l_chose_rm1 ;
   Outils.extend l_f_1x_2cr l_chose_ch2 ;
   Outils.extend l_f_1x_2rm l_chose_rm2 ;
@@ -218,7 +221,7 @@ let cmd_merge l =
 
   (* ETAPE 1 : retrouver le plus proche ancêtre commun et cmt y accéder *)
   let commits = Outils.list_sha !dr_comms in
-  let gup,_(*gdown*) = Branch.make_commit_graph commits in
+  let gup,_,_ = Branch.make_commit_graph commits in
   let tbl = ref (IdMap.empty) in (* tbl des dist à br1 *)
 
   let qu = Queue.create () in
@@ -226,7 +229,7 @@ let cmd_merge l =
   while not (Queue.is_empty qu) do
     let (cm,p,chemin) = Queue.pop qu in
     if cm=cm2 then 
-    ( eprintf "Branch %s is on a parent state of branch %s"  br1 br2 ; exit 0) ;
+    ( eprintf "Branch %s is on a parent state of branch %s\n"  br1 br2 ; exit 0) ;
     if not (IdMap.mem cm !tbl) then begin
       tbl := IdMap.add cm (p,chemin) !tbl ;
       if cm<>"none" then 
@@ -244,7 +247,7 @@ let cmd_merge l =
   while not (Queue.is_empty qu) do
     let (cm,p2,chemin2) = Queue.pop qu in
     if cm=cm1 then 
-    ( eprintf "Branch %s is on a parent state of branch %s"  br2 br1 ; exit 0) ;
+    ( eprintf "Branch %s is on a parent state of branch %s\n"  br2 br1 ; exit 0) ;
     if not (IdSet.mem cm !tbl2) then begin
       tbl2 := IdSet.add cm !tbl2 ;
       if cm<>"none" then 

@@ -21,11 +21,9 @@ let tbl_fkeys = ref IdMap.empty
 
 (* == CREATE == *)
 let do_d_cr cch d =
-  print_detail "Create dir : %s\n" d ;
   fprintf cch "CREATE DIR %s\n" d
 let do_f_cr_exist cch (f,key) =
   tbl_fkeys := Outils.map_list_add key !branch !tbl_fkeys ;
-  print_detail "Create file : %s\n" f ;
   fprintf cch "CREATE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 let do_f_cr cch f =
@@ -40,10 +38,8 @@ let real_mv (op,np) =
   if ret<>0 then 
   (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1)
 let do_d_mv cch (op,np) = (*oldpath newpath*)
-  print_detail "Move dir : %s to %s\n" op np ;
   fprintf cch "MOVE DIR %s %s\n" op np
 let do_f_mv cch ((op,key),np) =
-  print_detail "Move file : %s to %s\n" op np ;
   fprintf cch "MOVE FILE %s %s %s\n" op np key ;
   printf "*" ; flush stdout
 
@@ -51,10 +47,8 @@ let do_f_mv cch ((op,key),np) =
 (* == REMOVE == *)
 let real_rm = Outils.remove
 let do_d_rm cch d =
-  print_detail "Remove dir : %s\n" d ;
   fprintf cch "REMOVE DIR %s\n" d
 let do_f_rm cch (f,key) =
-  print_detail "Remove file : %s\n" f ;
   fprintf cch "REMOVE FILE %s %s\n" f key ;
   printf "*" ; flush stdout
 
@@ -67,7 +61,6 @@ let do_f_rm cch (f,key) =
 
 (* fn : filename ; fread : nom du fichier où lire le contenu. *)
 let do_f_ch_aux cch fn fread old_key new_key =
-  print_detail "Change file : %s\n" fn ;
 (* Charger l'ancienne, via un fichier où la décompresser *)
   let tmp_old_file = Filename.concat !dr_files "tmp_old_file" in
   Outils.load_fn old_key !dr_files tmp_old_file ;
@@ -137,6 +130,29 @@ let do_f_ch_exist cch (fn,old_key,new_key) =
 (* ================ *)
 
 
+(* ===== explain_commit ===== *)
+(* Sur option, permet d'afficher tout ce qui va être fait. *)
+let explain_commit msg
+      d_to_cr d_to_mv d_to_rm 
+      f_to_cr f_to_ch f_to_mv f_to_rm 
+      f_to_cr_exist f_to_ch_exist = 
+  let lf l = fst (List.split l)
+  and ls l = snd (List.split l) in
+  Outils.print_line () ;
+  printf "COMMIT : %s\n" msg ;
+  List.iter  (printf "Create dir  : %s\n") d_to_cr ;
+  List.iter2 (printf "Move dir %s to %s\n") (lf d_to_mv) (ls d_to_mv) ;
+  List.iter  (printf "Remove dir  : %s\n") d_to_rm ;
+  List.iter  (printf "Create file : %s\n") f_to_cr ;
+  List.iter  (printf "Change file : %s\n") (lf f_to_ch) ;
+  List.iter2 (printf "Move file %s to %s\n") (lf (lf f_to_mv)) (ls f_to_mv) ;
+  List.iter  (printf "Remove file : %s\n") (lf f_to_rm) ;
+  List.iter  (printf "Create based on existing file : %s\n") (lf f_to_cr_exist) ;
+  List.iter  (fun (fn,_,_) -> 
+              printf "Change based on existing file : %s\n" fn) f_to_ch_exist ;
+  Outils.print_line ()
+
+
 (* ===== print_commit ===== *)
 (* La fonction print_commit sert à la fois pour la cmd_commit,
    avec ce qui suit. Mais aussi pour les commits résultants
@@ -174,6 +190,13 @@ let print_commit msg pcommit
   Outils.store tmp_file !dr_comms ;
   Outils.flush_tbl_fkeys !tbl_fkeys ;
   if not !bool_print_debug then Sys.remove tmp_file ;
+
+  if !bool_print_detail 
+  then explain_commit msg
+      d_to_cr d_to_mv d_to_rm 
+      f_to_cr f_to_ch f_to_mv f_to_rm 
+      f_to_cr_exist f_to_ch_exist ;
+
   sha
 (* ================ *)
 

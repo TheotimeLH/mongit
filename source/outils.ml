@@ -10,7 +10,6 @@ let empty_file f =
   close_out oc
 
 let init_file f s =
-  print_debug "try to init : %s with %s \n" f s ;
   let oc = open_out f in
   output_string oc s ;
   close_out oc
@@ -73,6 +72,11 @@ let map_list_add key t tbl = match IdMap.find_opt key tbl with
 
 let map_list_rm  key t tbl =
   IdMap.add key (list_rm_fst_occ t (IdMap.find key tbl)) tbl
+
+
+let print_line () =
+  printf "========================\n"
+
 (* ================== *)
 
 
@@ -281,8 +285,9 @@ let uncompress infile outfile =
 
 
 (* ===== STORE / LOAD / RM ===== *)
+
 let store f dir =
-  let key,rest = mksha f |> cut_sha in
+  let key,rest = mksha fread |> cut_sha in
   let subdir = Filename.concat dir key in
   if not (Sys.file_exists subdir) 
   || not (Array.mem rest (Sys.readdir subdir))
@@ -292,6 +297,7 @@ let store f dir =
     let out = Filename.concat subdir rest in
     compress f out
   end
+
 
 let load str_h dir oc =
   let key,rest = cut_sha str_h in
@@ -381,5 +387,9 @@ let branch_switch_former () = match !list_old_br with
 (* ================== *)
 
 
+(* ===== RENAME COMMIT ===== *)
+let rename_commit oldk newk =
+  let tmp = Filename.concat !dr_comms "tmp_commit_rename"
+(* ================== *)
 
 

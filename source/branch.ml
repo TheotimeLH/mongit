@@ -69,6 +69,7 @@ let cmd_create new_br =
 (* Commande uniquement utilisé en interne pour supprimer des branches tmp.
    Pourrait causer de très gros dégats. *)
 let delete br =
+  Outils.remove (Filename.concat !dr_brnch br) ;
   Tree.erase (Outils.sha_name (Outils.with_branch br "")) ;
       (Outils.load_tbl_fkeys ())
   |>  (IdMap.map (Outils.list_rm br))
