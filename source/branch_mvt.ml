@@ -1,5 +1,6 @@
 (* BACKWARD & FORWARD *)
 open Root
+open Printf
 
 (* === AUX === *)
 (* 
@@ -124,7 +125,7 @@ let forward branch cm_sha =
   Outils.remove tmp_commit ;
   Outils.set_commit branch cm_sha ;
   Outils.branch_switch_former () ;
-  print_detail "Forward : branch %s -> %s\n" branch cm_sha
+  printf "Forward : branch %s -> %s...\n" branch (Outils.short cm_sha)
 (* ========================== *)
 
 
@@ -169,6 +170,6 @@ let backward branch cm_sha =
   Outils.remove tmp_commit ;
   Outils.set_commit branch pcommit ;
   Outils.branch_switch_former () ;
-  print_detail "Backward : branch %s -> %s\n" branch cm_sha
+  printf "Backward : branch %s <- %s\n" branch (Outils.short cm_sha)
 (* ========================== *)
 

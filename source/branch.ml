@@ -55,7 +55,11 @@ let cmd_create new_br =
   Outils.init () ;
   if new_br = "tmp_for_merge" then
     ( eprintf "Sorry \"tmp_for_merge\" is a special branch name.\n" ; exit 1) ;
-  create !branch new_br
+  create !branch new_br ;
+  printf 
+    "%s has been successfully created.\n\
+    \"mg -branch -switch %s\" might be a good idea.\n"
+    new_br new_br
 (* ================= *)
 
 
@@ -83,7 +87,9 @@ let cmd_switch br =
     close_in ic ;
     Outils.empty_file !to_be
   with | End_of_file -> () end ;
-  Outils.branch_switch br
+  Outils.branch_switch br ;
+  printf "The current branch has switched from %s to %s.\n"
+    (Outils.branch_former ()) br
 (* ================= *)
 
 

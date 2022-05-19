@@ -37,7 +37,7 @@ let do_f_cr cch f =
 let real_mv (op,np) =
   let ret = Sys.command (sprintf "mv %s %s" op np) in
   if ret<>0 then 
-  (eprintf "Sys command mv failed to move %s -> %s" op np ; exit 1)
+  (eprintf "Sys command mv failed to move %s -> %s\n" op np ; exit 1)
 let do_d_mv cch (op,np) = (*oldpath newpath*)
   fprintf cch "MOVE DIR %s %s\n" op np
 let do_f_mv cch ((op,key),np) =
@@ -248,8 +248,8 @@ let compile_commit () = (* -> sha du commit *)
       [] [] in
     (*=*)
     printf 
-     "Done. created : %d ; rebuilt : %d ; slightly modified : %d ; \
-      unchanged : %d ; removed : %d ; moved : %d\n"
+     "Done. created : %d ; rebuilt : %d ; slightly modified : %d ;\n\
+      \tunchanged : %d ; removed : %d ; moved : %d\n"
       nb_f_cr !nb_rebuilt !nb_minor nb_nothing nb_f_rm_tree nb_f_mv_tree ;
     printf "Total : %d insertions(+), %d deletions(-)\n"
       !nb_lines_add !nb_lines_del ;
@@ -260,10 +260,10 @@ let compile_commit () = (* -> sha du commit *)
   
   if nb_f_real+nb_d_real<>0 then begin
     printf 
-      "Now we will apply move and remove commands on \
-       the real directory (%d file(s) and %d dir(s)). \
-       Next time, if you only want to operate on the \
-       repo use the -only_on_repo option.\n" nb_f_real nb_d_real ;
+    "\nNow we will apply move and remove commands on \n\
+       the real directory (%d file(s) and %d dir(s)).\n\
+       Next time, if you only want to operate on the \n\
+       repo use the -only_on_repo option.\n\n" nb_f_real nb_d_real ;
     List.iter real_mv d_to_mv_real ;
     List.iter real_mv f_to_mv_real ;
     List.iter real_rm d_to_rm_real ;

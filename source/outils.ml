@@ -387,9 +387,10 @@ let use_graphviz s =
   and _pdf = s^".pdf" in
   let ret = Sys.command 
   ( sprintf "dot -Tpdf %s > %s && evince %s" _dot _pdf _pdf ) in
-  if ret <> 0 then
-    ( eprintf "(controled) problem with dot cmd\n" ; exit 1) ;
-  if not !bool_print_debug then
+  if ret <> 0 then eprintf 
+   "Problem with Graphviz's dot or evince\n\
+    file %s has been created, you can use it yourself.\n" _dot
+  else if not !bool_print_debug then
     (Sys.remove _pdf ;
      Sys.remove _dot )
 (* ================== *)
@@ -408,13 +409,16 @@ let branch_switch br =
   branch := br ;
   init_file (Filename.concat !dr_brnch "HEAD") (br^"\n")
 
-let branch_switch_former () = match !list_old_br with
-  | [] -> eprintf "ERROR : pas de branche précédente pour switch_former\n" ; 
-          raise Mg_error
-  | br :: q ->
-      branch := br ;
-      init_file (Filename.concat !dr_brnch "HEAD") (br^"\n") ;
-      list_old_br := q
+let branch_former () = match !list_old_br with
+  | [] -> eprintf "ERROR : no fermer branch\n" ; raise Mg_error
+  | br :: _ -> br
+
+let branch_switch_former () = 
+  let br = branch_former () in
+  branch := br ;
+  init_file (Filename.concat !dr_brnch "HEAD") (br^"\n") ;
+  list_old_br := List.tl !list_old_br
+
 (* ================== *)
 
 

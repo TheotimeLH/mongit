@@ -22,7 +22,9 @@ let init () =
   Outils.empty_file 
     ("Initial:" (* rootpath of root + on the initial branch*)
     |> Outils.sha_name 
-    |> (Filename.concat ".mongit/trees"))
+    |> (Filename.concat ".mongit/trees")) ;
+
+  printf "A new repo has been created.\n"
 (* ================ *)
 
 
@@ -35,8 +37,14 @@ let remove_repo () =
       i.e. the parent file of the \".mongit\" directory.\n" ;
     exit 1) ;
 
-  printf "Do you really want to delete the repo ? [yes or no]\n" ;
-  if read_line () = "yes" then Outils.remove ".mongit"
+  printf 
+    "Do you really want to delete the repo ? [\"yes\" or no]\n\
+     /!\\ it is an unrecoverable destructive action /!\\\n" ;
+  if read_line () = "yes" 
+  then 
+  ( Outils.remove ".mongit" ; 
+    printf "the entire repo has been deleted.\n" )
+  else printf "Action cancelled.\n"
 (* ================ *)
   
 
@@ -46,20 +54,23 @@ let update () =
   Unix.chdir "/home/theotime/Documents/Projets/mongit/source" ;
   let ret = Sys.command "make cmd" in
   if ret <> 0 then
-    ( eprintf "Mongit update crashed.\n" ;
-      exit 1) ;
+    ( eprintf "Mg update crashed.\n" ;
+      exit 1)
+  else printf "Mg has been successfully updated !\n" ;
   Unix.chdir !Root.real_cwd
 (* ================ *)
 
 
 (* ===== CAT ===== *) 
-let cat_file str_h =
+let cat_file sha =
   Outils.init () ;
-  Outils.load str_h !dr_files stdout
+  printf "=== File associated with sha %s in the repo : ===\n" sha;
+  Outils.load sha !dr_files stdout
 
-let cat_commit str_h =
+let cat_commit sha =
   Outils.init () ;
-  Outils.load str_h !dr_comms stdout
+  printf "=== Commit associated with sha %s in the repo : ===\n" sha;
+  Outils.load sha !dr_comms stdout
 
 let cmd_list_commits () =
   Outils.init () ;
@@ -75,5 +86,6 @@ let cmd_list_files () =
 (* ===== RESET COMMIT ===== *)
 let cmd_reset_commit () =
   Outils.init () ;
-  Outils.empty_file !to_be
+  Outils.empty_file !to_be ;
+  printf "The file to_be_commited has been cleared.\n"
 (* ================ *)

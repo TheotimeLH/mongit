@@ -19,8 +19,12 @@ let pre_commit_cmd ope f = (* ope = add | minus | remove*)
   let oc = open_out_gen [Open_creat ; Open_append] mkfile_num !to_be in
   let rf = Outils.rootpath f in
   if rf = "" (* root *)
-  then fprintf oc "all _ %s\n" ope
-  else fprintf oc "%s _ %s\n" ope (Outils.rootpath f) ;
+  then 
+  ( fprintf oc "all _ %s\n" ope ;
+    printf "%s everything. Waiting for a commit.\n" ope )
+  else 
+  ( fprintf oc "%s _ %s\n" ope rf ;
+    printf "%s %s. Waiting for a commit.\n" ope rf ) ;
   close_out oc
 
 let cmd_move = function
@@ -33,11 +37,14 @@ let cmd_move = function
     if r_old="" || r_new="" then
     ( eprintf "You can't move the whole directory like that.\n" ;
       exit 1 )
-    else if (r_old <> r_new) && (Tree.dont_overwrite_chk !only_on_repo r_new)
-    then fprintf oc "move_%B %s %s\n" !only_on_repo r_old r_new ;
+    else if (r_old = r_new) then
+    ( printf "Nothing to move oldpath=newpath.\n" )
+    else if Tree.dont_overwrite_chk !only_on_repo r_new then
+    ( fprintf oc "move_%B %s %s\n" !only_on_repo r_old r_new ;
+      printf "Request to move %s to %s noticed.\n" r_old r_new ) ;
     close_out oc
   | _ -> 
-      eprintf "To move a file/dir with mg you must use :\
+      eprintf "To move a file/dir with mg you must use :\n\
         \"mg [-only_on_repo] -move <old-path> <new-path>\"\n" ;
       exit 1
 (* ================ *)

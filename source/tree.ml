@@ -184,8 +184,8 @@ let dont_overwrite_chk not_real df =
     else try ignore (find_key_df df) ; false
     with | Not_in_the_tree -> true  )
   then ( eprintf 
-    "Error : operation ignored to avoid overwriting \
-     (in the repo or/and in the real directory) maybe \
+    "Error : operation ignored to avoid overwriting  \n\
+     (in the repo or/and in the real directory) maybe\n\
      you should consider the -only_on_repo option.\n" ;
      false )
   else true

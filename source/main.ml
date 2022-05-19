@@ -42,7 +42,7 @@ let subparser_branch () =
       "Move backward the current branch a number of steps");
    ("-merge",
       Rest_all Branch_merge.cmd_merge,
-      "Merge two branches, using their closest common ancestor as reference.");
+      "Merge two branches, using their closest common ancestor as ref.");
   ]
 (* =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_= *)
 
@@ -100,7 +100,7 @@ let () = speclist :=
 (* ===== OPTIONS ===== *)
    ("-only_on_repo", 
       Set Root.only_on_repo , 
-      "limit remove and move cmds so that \
+      "limit rm and mv cmds so that \
        they only affect the repo");
    ("-include_secret", 
       Set Root.include_secret , 
