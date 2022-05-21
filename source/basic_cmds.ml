@@ -51,7 +51,7 @@ let remove_repo () =
 (* ===== UPDATE ===== *)
 let update () =
   Root.real_cwd := Unix.getcwd () ;
-  Unix.chdir "/home/theotime/Documents/Projets/mongit/source" ;
+  Unix.chdir Mgrc.path_sources ;
   let ret = Sys.command "make cmd" in
   if ret <> 0 then
     ( eprintf "Mg update crashed.\n" ;

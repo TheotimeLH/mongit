@@ -228,10 +228,12 @@ let cmd_merge l =
   (* ETAPE 0 : Initialisation *)
   Outils.init () ;
   Outils.rootwd () ;
-  let br1,br2 = match l with
-  | [br1;br2] -> br1,br2
-  | _ -> eprintf "Syntax error on the merge cmd, use : \
-    <mg -branch -merge \"branch_name 1\" \"branch_name 2\">\n" ;
+  let br1,br2,br_merge = match l with
+  | [br1;br2] -> br1,br2,br1
+  | [br1;br2;br_merge] -> br1,br2,br_merge
+  | _ -> eprintf "Syntax error on the merge cmd, use : \n\
+    <mg -branch -merge \"branch_name 1\" \"branch_name 2\"\
+    [\"post_merge_branch_name\" (default branch 1)]>\n" ;
     exit 1
   in
   let cm1 = Outils.find_commit br1 
@@ -305,6 +307,18 @@ let cmd_merge l =
   Branch_mvt.forward br1 sha ; (* pour clarifier le graphe *)
   Branch_mvt.forward br2 sha ;
   Branch.delete br_tmp ;
+  if br_merge=br1 then 
+  ( Branch.delete br2 ;
+    if !branch = br2 then Outils.branch_switch br1 )
+  else if br_merge=br2 then
+  ( Branch.delete br1 ;
+    if !branch = br1 then Outils.branch_switch br2 )
+  else
+  ( Branch.create br1 br_merge ;
+    Branch.delete br1 ;
+    Branch.delete br2 ;
+    if !branch = br1 || !branch = br2 
+    then Outils.branch_switch br_merge ) ;
   Outils.realwd ()
   
 

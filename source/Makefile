@@ -1,15 +1,30 @@
-mk_mongit: clean mongit
+path_bin_file=/home/theotime/Documents/Projets/bin
 
-mongit:
-	dune build main.exe
-	cp _build/default/main.exe mongit
+all: mk_init mk_mg cmd
 
-clean:
+mk_init: clean_init init
+
+init:
+	dune build init.exe
+	cp _build/default/init.exe init
+	./init
+
+clean_init:
 	dune clean
-	rm -f mongit
+	rm -f init
 
-cmd: mk_mongit
-	cp -f mongit $$HOME/Documents/Projets/bin/mg
+mk_mg: clean_mg mg
+
+mg:
+	dune build main.exe
+	cp _build/default/main.exe mg
+
+clean_mg:
+	dune clean
+	rm -f mg
+
+cmd: mk_mg
+	cp -f mg $(path_bin_file)/mg
 
 .PHONY:
-	mk_mongit
+	mk_mg mk_init
