@@ -77,7 +77,12 @@ let chose_rm_ch br_rm br_ch (fn,k) =
 
 (* ============================================================= *)
 (* Départage les modifications d'un même fichier *)
-let scan_double_ch (_,_,_,_)(*fn,ka,k1,k2)*) = () (* TODO *)
+let scan_double_ch (fn,_,k1,k2)(*fn,ka,k1,k2)*) = (* TODO *)
+  eprintf 
+    "Désolé je ne gère pas encore les conflits avec des\n\
+     modifications différentes d'un même fichier (ici %s) dans les deux\n\
+     branches à défaut je garde la version de la branche 1\n" fn ;
+  (fn,k2,k1)
 
 
 
@@ -170,7 +175,7 @@ let scan_merge br1 br2 br_anc =
   Outils.extend l_f_1cr_2x l_chose_ch1 ;
 
   (* TODO *)
-  ignore (List.map scan_double_ch !l_f_1ch_2ch) ; 
+  Outils.extend l_f_1ch_2x (List.map scan_double_ch !l_f_1ch_2ch) ;
 
   (* RETURN, il n'y a plus de conflits : *) 
   !l_d_1cr_2x , !l_d_1x_2cr ,

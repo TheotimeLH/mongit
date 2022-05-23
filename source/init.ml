@@ -5,6 +5,7 @@ let () =
   let oc = open_out "mgrc.ml" in
   fprintf oc "let path_sources = \"%s\"" (Unix.getcwd ()) ;
   printf "Source directory := %s\n" (Unix.getcwd ()) ;
+  close_out oc ;
 
   (* PATH TO BIN *)
   let lines = Outils.readlines "Makefile" in
@@ -21,11 +22,12 @@ let () =
         "%s doesn't exists, the bin will stay in the source dir.\n" rep
       else begin
       let oc = open_out "Makefile" in
-      fprintf oc "path_bin_file = %s\n" rep ;
+      fprintf oc "path_bin_file=%s\n" rep ;
       for i = 1 to Array.length lines - 1 do
         fprintf oc "%s\n" lines.(i)
       done ;
       close_out oc ;
+      Unix.putenv "path_bin_file" rep ;
       let env_path = Unix.getenv "PATH" in
       let l_dir = String.split_on_char ':' env_path in
       if not (List.mem rep l_dir)
