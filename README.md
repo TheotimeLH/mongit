@@ -3,7 +3,7 @@
 ## Warning :
 Be careful, you need to use a ***Ocaml version 4.14.0*** or higher !
 
-=====
+---
 
 To use mg you must clone the source directory.
 Then you just have to call `make`.
