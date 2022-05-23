@@ -1,5 +1,10 @@
 # mg : a Git-like revision control system
 
+## Warning :
+Be careful, you need to use a ***Ocaml version 4.14.0*** or higher !
+
+=====
+
 To use mg you must clone the source directory.
 Then you just have to call `make`.
 
@@ -7,9 +12,6 @@ Afterwards you can use the mg program wherever you want. I advice you to start w
 
 To update mg you just have to do a `mg -update`. You no longer need to interact with the Makefile.
 To remove the build files you can do `make clean` and to reset everything you can do a `make clean_all`. 
-
-## Warning :
-Be careful, you need to use a ***Ocaml version 4.14.0*** or higher !
 
 ### Details :
 mg has a -update command that allows it to update itself from anywhere, but to do so it needs to know where the source file is, that's why the first `make` triggers a `make init`.
